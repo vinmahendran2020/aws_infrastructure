@@ -1,0 +1,21 @@
+---
+###############################
+####   Destroy TERRAFORM   ####
+###############################
+- name: Destroy Infra nonprod
+  hosts: all
+  become: yes
+  become_method: sudo
+
+  tasks:
+  - name: Terraform init
+    command: chdir=../../../terraform/environments/nonprod/ terraform init
+    tags: init
+
+  - name: Terraform state
+    command: chdir=../../../terraform/environments/nonprod/ terraform state pull
+    tags: state
+
+  - name: Terraform destroy
+    command: chdir=../../../terraform/environments/nonprod/ terraform destroy -auto-approve -var project_name="destroy" -var ami="destroy" -var s3_bucket_name="destroy" -var path_to_allowed_public_keys="/root/.ssh/" -var vault_public_key="/root/.ssh/id_rsa.pub" -var vault_public_key="destroy" -var bastion_public_key="destroy" -var aws_region="{{ lookup ('env', 'AWS_DEFAULT_REGION') }}"
+    tags: destroy

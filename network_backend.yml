@@ -1,0 +1,792 @@
+---
+# This file holds all the configuration values for the cluster(s) for the blockchain network
+# This is a sample configuration file for MEDIUM Performance environment.
+network:
+  # Allows specification of one or many organizations that will be connecting to a network.
+  # Each meta under organizations correspond to a new Kubernetes environment. For details check confluence (https://confluence.devx.systems/display/PI/ION+Backend+Environment+Diagram)
+  organizations:
+    # NOTE - access key variable has been removed in favour of using environment variables
+    # Please consult Terraform documentation on what it expects (e.g. AWS https://www.terraform.io/docs/providers/aws/index.html)
+    # e.g. for AWS, it expects AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY
+
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: uat1-backend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"      # can be "planned", "present", "absent"
+        force_init: "yes"
+        show_plan: false      # can be "true", then it will show the plan in console
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to ion-infrastructure-prereqs for further instructions on how to create the backend
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-uat-remote-state"
+          key: "ion-terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-uat-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "uat"
+          k8:
+            scale_schedule:
+              # must be lower case true for true, only supports "true" or "false"
+              enabled: "false"
+              scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+              scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "40"      # Max number of EC2 nodes
+            min_size: "9"       # Min number of EC2 nodes
+            desired_size: "9"
+            root_volume_size: "40"
+            cluster_version: "1.16"
+          vault:
+            port: "8200"
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCLbknzuNBh1tlDRmOIz6VA0f2Pu27MTmvw4cJRN1yg6R+rjZxpe6IRDMRJ+q/VLXIHcjNXTBdZAvOPOeCd5oZf/mGHanUEGiWL02ha+WyKwe65++m6OqnG6iCDpJzvSib3uoQZJXVb8Ebu0kxNSadzx66cglUItMjmJw8lMG5u9V9ZfhhU0zyoPGjUPIV/UUL1DuomeeeqQOihtgt000MuLlbz89BPzRBH4aH+7HmitKR0Sf/d24tT8u9FNTtVTW8jdU564qqRmtrki6Y9Kd06YpzoCiZsbhrpXSjYWn9H1B3Z/zMYU2yjm1E7s3B//Ki9Aygp1GcXWrOG2qn5RcGn"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "alpha"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPAlH3z1wFZkzSZF9CNjhaKHmePACz+8psO66O8yx4tlnFdNeko/w91zLqAHVhF0+99R7/9IZhc8d33KJfp0ssxb6799nnpzaGC0h6Es3yJE+x6Sozri/HIsSbOg76kr14a+GNOf+yXeIUHOs7CDd4WqZ3GBtd01sqOrWZegEuDpULU2z91PkTMvfTmaqP7c9DJWmBsuL33RfoDeLp72YKyF8lYv8ygbdLvjqa/2pfOWXtyzGdvw+Rlsi/4ZhTCXqUHP71oo/6fAAiUIXmlTk9roh1wcx/Ro13pmt2JNhiYbNOE8izQ+EAhvmE5W7PQLCg8DD3ZfNnVxkEQ0kab1GgCSJa7tdKB0w1Tvln6iMDIs5mIV+IX8oOrXSEJwGDQkKa35Tb3SW2CwdgFCknU/oZxaeCxNeIa9tGM6zp+3b8T7GssvJcjZukGns6oYdlRLe9ntSemNQ5k9QB7GQIpng+iYUwxSmReaKufwuUho1RofoZTyX6R0L3vS7yfLuvGwfRVDsXZ2/lPyCYjO4R8fgz2vH7c0jOoCx1OJOJbBEMM9cY+WraMAAVAFuuGJB3w8IBefnJCoFaqxHXoajwzPSWFDH3N+uK62MD9sJk0ObmM6kLVP7BU0ZXAY3y2KltWPw1cOZ09iogut02XcTMlIEE52P1a2UIeTA+Vmny92gt7Q== alpha.sall@accenture.com"
+          domain:
+            prefix: "uat1"
+            name: "uat.devx.systems" # main route 53 domain name hosted zone
+          bastion:
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCLbknzuNBh1tlDRmOIz6VA0f2Pu27MTmvw4cJRN1yg6R+rjZxpe6IRDMRJ+q/VLXIHcjNXTBdZAvOPOeCd5oZf/mGHanUEGiWL02ha+WyKwe65++m6OqnG6iCDpJzvSib3uoQZJXVb8Ebu0kxNSadzx66cglUItMjmJw8lMG5u9V9ZfhhU0zyoPGjUPIV/UUL1DuomeeeqQOihtgt000MuLlbz89BPzRBH4aH+7HmitKR0Sf/d24tT8u9FNTtVTW8jdU564qqRmtrki6Y9Kd06YpzoCiZsbhrpXSjYWn9H1B3Z/zMYU2yjm1E7s3B//Ki9Aygp1GcXWrOG2qn5RcGn"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "jeeva"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRG0RVvmeCmUUGDpTmV/TGGMuTVh42T8q045Y/d2IVrt1i/M5oVB4xcviU1td0DF017U6Pr0pyWwGil6A2/sxLJEpLulXFpu3Zs8fFitzWaop7jfVtgdsVwZNKRcjU72IrKolHbCb2/Sp89b7Fl2XVwURfLgyWnyUn/5BgAH6yfH1h6dd7YLaHUtmk1Eu1Ou315HMVD0rn+uRw+GUqY0YMgcVV0hWg5z1wFe0FSlqF99Ea95hFFO2rE0ODAcxg2OqmLN8KXvhLp9ZoDzRn/BEuMBgUD1YfZ6YMS7b387QlYxXiPWgWURhPhApfVFxDOEiGbiaaXIArlyItWNyTLAmBZ1LowWxro+wL3rw/zJeWPmI2SaFfUe0WakFswgYgBIUi82xMQD4s7FnTPRiPDcYb14+waXp1hG3+RmOTugRy+5H79e7se8XFkT2OY68YxZManEfRRxy3lJjCtgThNEX5U+N5u0OX1cMEsx0UfZ5vpvRQ9+MmjVpS3LiQH+bh7eE= jsankarapandian@devx.systems"
+              - name: "mekia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGw7OWMLrhdlrnK5ukijAsQ5NTqbWvQfldmJfaRdmEVZSKme7Km13i9udnchmvL94/eCHJYvNY4LSKtHNdXTYnyV1Vx6+42sCZfYb9Js2+vxaTLWD5h3S+EoW5w+XJ7oUXY/Dxmc0wkFN8er2KD3lbWknAv5m75hB7/qHxHK7ptG5Pk1Q0i4f2q1jtmmKqCYO0m+Mtm/jlUsyhoy1Ndz8KD8Tm9kp/dL6TIaKQU6PHeBS3FpCDo38OLbwIR6qksrux8KcSx1Y/1qf26je7K/hDFL1D3QNCaG9mOXaLUEXpmVX82rIN7AwXlgIOs0IhEetwxF/v4zj4EwmN6+DG9nmnYRaQu04/Axw1A1ymKcUZPJNAJOfbqdkuk2Vvop1KyuEXm/9uZv0O0vuWxPF1m8fsYbDHQrsXhRYpQchj47m3UgA8Jtfd9ryYqYyIef2yGBbkt4loS11Uo9HUeSRULGu4XSD52Chxt6qPVtj6UgO1taXQHsNS3oDsn9zxhC2Txpc= mekiae@Mekias-MacBook-Pro.local"
+              - name: "exactpro"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/a4ieC269CvLzDh3uyL1NdPVr5BqI/7Li9sJnpzt2lnHY8sa+PtkidZEjP1zxSA7tB2zYqLjMm5OcbdU4y5l2LtYsQqsm3y9T1Ypd4wTYRmcBwjF/wX+JivYfkgu0Q776CGV8Yv8Vt+X6DFsETmiHdZHGzpVgNAdN1En3b0sw5jwvskYgIJwFRmqcZbSn6K1qwHx6WmkgArzFRWR4DeWgRjGWnOnYzz5LI3ofNR/+lRm4H+H2qe+ZT9F8L7yi71RQimNJPMuZuYzzncR5u4w6mOyr3hK8piZJFY83ZYiux5PQyigfCm1vdHH6mUQBbsS4izVcwx2LBiz7pGnKTDkGhxWLMFBPfsFA+w0SUNRsxFN0V5aaUbpjBUDWsVdbd8Nxa+1oT1QasjskIydoRXYEpE0EDsUh20ZWSEuCSTcUzM0EeLE94sliMF7HhIWOocE6Pr3OwVNdM39vJlxKSpJpPrbu74H3Uj8yKsNZHqu9GczrZm9x59Hseg+AvqVm0LM= ec2-user@ip-10-2-0-244.us-east-2.compute.internal"
+              - name: "vmahendran"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCcDaDwbiFT0tZIRwKUObtz2V+L48cSkt5VGvDv6FuUb/L1kctftx2WxLzocnLKTqMEAHWyzHgmxRkHCzU5f77fDItQrG8s1oqiaJn24PPqWLh46wSPJvzxRf3fWPF11UpPiBol1OFDHAhmhC/14bHR5gX7kve9cFU7vO9w7gf8fI5wjftbRNO0hoMjynvQrYCAbuwdgDaTP8taCYfWn2KEXW3N1lJmTmam6+34rUVQACucBR+9TTyzKUdbCZ4tXiPkqE6I5QCHjf6H/B5Pjkj26hb8AJGD+dRgzi9XvmoIwkgNCm6YGYdPdC8tQ4ueIqlUDMecMaTQM170HZTVna7GtaPiOTP3dWNeE9B6NgDUqouCtHO2w7s8ja9F9kYoVnxhXl46hmwCNkdgHcx7EoeMnZR0kY9L6x8iCep3EJPhIRrwbKPcY4+/QTNSMk4SNhw9AMcVx7b+csH4ANOhMd/PA/k80HgfsQOkLmrHKLu9d0i4MIeJ4i2sQO2UJUFEiG0= vmahendran@devx.systems"
+              - name: "alpha"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPAlH3z1wFZkzSZF9CNjhaKHmePACz+8psO66O8yx4tlnFdNeko/w91zLqAHVhF0+99R7/9IZhc8d33KJfp0ssxb6799nnpzaGC0h6Es3yJE+x6Sozri/HIsSbOg76kr14a+GNOf+yXeIUHOs7CDd4WqZ3GBtd01sqOrWZegEuDpULU2z91PkTMvfTmaqP7c9DJWmBsuL33RfoDeLp72YKyF8lYv8ygbdLvjqa/2pfOWXtyzGdvw+Rlsi/4ZhTCXqUHP71oo/6fAAiUIXmlTk9roh1wcx/Ro13pmt2JNhiYbNOE8izQ+EAhvmE5W7PQLCg8DD3ZfNnVxkEQ0kab1GgCSJa7tdKB0w1Tvln6iMDIs5mIV+IX8oOrXSEJwGDQkKa35Tb3SW2CwdgFCknU/oZxaeCxNeIa9tGM6zp+3b8T7GssvJcjZukGns6oYdlRLe9ntSemNQ5k9QB7GQIpng+iYUwxSmReaKufwuUho1RofoZTyX6R0L3vS7yfLuvGwfRVDsXZ2/lPyCYjO4R8fgz2vH7c0jOoCx1OJOJbBEMM9cY+WraMAAVAFuuGJB3w8IBefnJCoFaqxHXoajwzPSWFDH3N+uK62MD9sJk0ObmM6kLVP7BU0ZXAY3y2KltWPw1cOZ09iogut02XcTMlIEE52P1a2UIeTA+Vmny92gt7Q== alpha.sall@accenture.com"
+              - name: "salwala"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDhfsGW+i/488fSiMW2DVZiS5l3cew2lX13aQMKUaH9e23zXvNShuDkkHZk0e3tHiZB9oqjsY5qn6Mk9gM7QRhvIesTnK5G1VbCStQjKNtpDGce9bCwb2GtKORuIkIoqKwP7aCm74sP7dM7ITon2qOR3wV+tO03GJjrQySY0KJcavHE56dL34Pp73idF9AapqGrTeTryIJ3QpioXNQ1s7jLgpVzmw3MSJ5R/h0C+zkEWlHRfll35bv+fSuG+76YBc1Xn//mYhjGNYiBqlCyEmIPfoIHQjxCBtjksLVwB8uQ6vpOAlWawrBl4eoUMfPXgITLWQx8RjB8Q2SG0QTnEPykAfKwY2HfBntbbs0pdMA3KEG+Te0eYSh9D9lwzX3T+RR926UWXKc2n0irJ52ys5hkA7mox/xotQ6BTV4VfgsKZiuwbaa1SzJyyjZJbOK5sSThH+Qp/bDRbDkqtvHIBt81NMzDDEXqSCXpbJLOSJVe6rNE0OxhqdnSmWvWh5Dv2gs= Seshu@ADMINIS-SP81DRQ"
+              - name: "vinita"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDQ6gnMe/ohTBF50hLFTcnsoP5giDJfRTDWENON03wpJk/dDI1P5KYaJEVydi6rLQZO/1jMNb+sL73Wv7neT9D0Y2nADRG75lFDiQCg2uMp9d7Zal6EUoWYL79rJqtzztnf8y5fuS1Fp0M4EbPp9Lqg89ctH5Owj/bPY5NIsYqTII5UfH81+bPnI5Ymk3YpJaYU9KptJSK53iiGqFqEBXMz2pm+SzSsxS2U25U5WzVSKD5fEvZMiDjhwVREXxhPr5cHJcs+QaNTt9dknTgJeIdPfZpfGFhpM8J0hmMmauhLBJamlZBtC7f5tnnQqSahtg1z+OlI5eD8kPIFESs4fULp vinita@vinita-ThinkPad-X1-Carbon-4th"
+              - name: "hgoradia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRMxUwhyBVOylMGxSzWMfsvATQcvq8vu8jLHZKAq+ve9G95rWp5xbdrtzWRxOXWtn4g+VcXFePuJkERvEkiOSwAc9Z/D/wN7D//L7zwIrq79j69ZAySAhwbTb9lE9PhGh8CmInHAltXLbz+l5Nu/lgbmHrmqKRW7kOGakp2GmNxlliObbkhRW+mS2OczQed8EEemBg+Mekf8lNugWSflSm3l+pza2eweXHCweHL3hIVUKeo/zuWeGoPwqPqk6Vs/tOQdw+mNYUVWDYocbQwzSoFHK5hsorXl08LygweARw0DrWjyN4Mcs5zM2QPNiULu9CljAqNlhZi0kTZX5FMVhNtnnpmS2aT+EfRf47IVbKZAVZdAmSaFng548Ks4f1bPmlVCev1u8IaAMIfcC3LxT8LjQBu3Ag4GUCp24z0Eo4Nuh0zmGRa1lPlFIzaVKEWpI76ebKaBdwdmjnDcmOfsL3G/J4+2fl2xfaBT8goOrQWt9pdaF4PKT/tkRKFiLV4hU= DTCC2@DESKTOP-902873C"
+              - name: "cyonkee"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDBko8p79sZOGNHAj6qoKa0po5natoucVSGO2C23NQ4KNyYz7JM2ZKs3o6XccFlO1UBsVbFx09vCUr+u/r6wcycapj+NLLGlOiXuidD2xLrtAvghwgwgJYbjcgyoxLTmjjQxgRotfUL0M50OK7PhQ9myZgHf4vHe2HaECXqV1tPIY2laGRyDLMzIqa4VIz8yUo+DT9rqqChePbG/gtXCxQbVQpZH2sKxjEz/sbe/vjGRgETiDbrAJxMDIHMDdNiKN7qO8Ch2gRKxX+ZXFgv6SLrVQOhnC/kQRzM54YwTsb5fr8O6InCJBvOc8f6l+jsIrnY2tMJJipVMk/Hyw7yPnZ5Bx87nFZiXI+sekyG2rhLPMMkUtbT7eTLRhnAalh1HUdeCU4leYEeGENDMu763m0iwgusMtIsEeeuNBIUXRHT2cfrHen2rKo59nQ5cKWYkrsI3kQQfnfcFocRdOsiqAGDiuldY2bAV+HwAWMYkGxIkEwX4RwjXsRxVnl3k5KWOLk= cyonkee@Coles-MBP.tampabay.rr.com"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.0.0.0/16"
+            public_subnets:
+              - "10.0.0.0/24"
+              - "10.0.1.0/24"
+            private_subnets:
+              - "10.0.2.0/24"
+              - "10.0.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+              # # Dev instance
+              # - "52.57.247.164/32"
+              # - "90.218.123.166/32"
+              # # Dev VPN
+              # - "3.124.141.103/32"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+            subnet_tags:
+              Environment: "uat"
+          eks:
+            instance_type: "t3.xlarge"   # Instance type of EC2 nodes for K8s cluster
+            worker_policies:
+              - "AWSCodeArtifactReadOnlyAccess"
+              - "CloudWatchAgentServerPolicy"
+          bastion:
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Bastions
+          vault:
+            min_size: "1"
+            max_size: "1"
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Vault
+          rds:
+            # Ensure the db_identifier is unique and does not contain special chars as this will be the RDS DBName
+            db_identifier: "uat1backenddb"
+            db_instance_class: "db.r5.large"
+            db_allocated_storage: "999"
+            db_user: "dbadmin"        # Do not use "admin" as the username as it is reserved
+            db_port: "5432"
+            db_backup_retention: "1"
+            #Password is temporarily hardcoded, per Sownak: looking into use of AWS Secrets Manager
+            db_password: "uat1690_Password_t3st"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          # MQ Endpoint Service (below components will be configured in infra as code later, currently using hardcoded due to manual creation)
+          mq:
+            mq_endpoint_service: "com.amazonaws.vpce.us-east-2.vpce-svc-0ef1a08d396a3cc2a"            
+          # Codepipeline for BAF
+          pipeline:
+            namespace: "uat1"
+            stage: "pilot"
+            repo: ion-blockchain-automation-framework
+            branch: "uat1"
+            git_username: "UATEnvServiceUser"
+            git_ssh_keyname: "APKA4PUKIGILGVC6JRUQ"
+            buildspec: "automation/buildspec.yml"    # The CENM Env must use automation/buildspec.yml, other Env Must use automation/buildspec_addorg.yml
+            cenm_environment: "uat1-backend"        # meta.name of the cluster were CENM will be deployed
+            codebuild_role: "ION_CodeBuild"
+            codepipeline_role: "ION_CodePipeline"
+            artifact_store: "ion-infrastructure-uat-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "uat-pilot-cross-account-kms-unseal-key"
+
+    # # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: uat2-backend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"      # can be "planned", "present", "absent"
+        force_init: "yes"
+        show_plan: false      # can be "true", then it will show the plan in console
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to ion-infrastructure-prereqs for further instructions on how to create the backend
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-uat-remote-state"
+          key: "ion-terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-uat-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "uat"
+          k8:
+            scale_schedule:
+              # must be lower case true for true, only supports "true" or "false"
+              enabled: "false"
+              scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+              scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "40"
+            min_size: "9"
+            desired_size: "9"
+            root_volume_size: "40"
+            cluster_version: "1.16"
+          vault:
+            port: "8200"
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCLbknzuNBh1tlDRmOIz6VA0f2Pu27MTmvw4cJRN1yg6R+rjZxpe6IRDMRJ+q/VLXIHcjNXTBdZAvOPOeCd5oZf/mGHanUEGiWL02ha+WyKwe65++m6OqnG6iCDpJzvSib3uoQZJXVb8Ebu0kxNSadzx66cglUItMjmJw8lMG5u9V9ZfhhU0zyoPGjUPIV/UUL1DuomeeeqQOihtgt000MuLlbz89BPzRBH4aH+7HmitKR0Sf/d24tT8u9FNTtVTW8jdU564qqRmtrki6Y9Kd06YpzoCiZsbhrpXSjYWn9H1B3Z/zMYU2yjm1E7s3B//Ki9Aygp1GcXWrOG2qn5RcGn"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "alpha"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPAlH3z1wFZkzSZF9CNjhaKHmePACz+8psO66O8yx4tlnFdNeko/w91zLqAHVhF0+99R7/9IZhc8d33KJfp0ssxb6799nnpzaGC0h6Es3yJE+x6Sozri/HIsSbOg76kr14a+GNOf+yXeIUHOs7CDd4WqZ3GBtd01sqOrWZegEuDpULU2z91PkTMvfTmaqP7c9DJWmBsuL33RfoDeLp72YKyF8lYv8ygbdLvjqa/2pfOWXtyzGdvw+Rlsi/4ZhTCXqUHP71oo/6fAAiUIXmlTk9roh1wcx/Ro13pmt2JNhiYbNOE8izQ+EAhvmE5W7PQLCg8DD3ZfNnVxkEQ0kab1GgCSJa7tdKB0w1Tvln6iMDIs5mIV+IX8oOrXSEJwGDQkKa35Tb3SW2CwdgFCknU/oZxaeCxNeIa9tGM6zp+3b8T7GssvJcjZukGns6oYdlRLe9ntSemNQ5k9QB7GQIpng+iYUwxSmReaKufwuUho1RofoZTyX6R0L3vS7yfLuvGwfRVDsXZ2/lPyCYjO4R8fgz2vH7c0jOoCx1OJOJbBEMM9cY+WraMAAVAFuuGJB3w8IBefnJCoFaqxHXoajwzPSWFDH3N+uK62MD9sJk0ObmM6kLVP7BU0ZXAY3y2KltWPw1cOZ09iogut02XcTMlIEE52P1a2UIeTA+Vmny92gt7Q== alpha.sall@accenture.com"
+          domain:
+            prefix: "uat2"
+            name: "uat.devx.systems" # main route 53 domain name hosted zone
+          bastion:
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCLbknzuNBh1tlDRmOIz6VA0f2Pu27MTmvw4cJRN1yg6R+rjZxpe6IRDMRJ+q/VLXIHcjNXTBdZAvOPOeCd5oZf/mGHanUEGiWL02ha+WyKwe65++m6OqnG6iCDpJzvSib3uoQZJXVb8Ebu0kxNSadzx66cglUItMjmJw8lMG5u9V9ZfhhU0zyoPGjUPIV/UUL1DuomeeeqQOihtgt000MuLlbz89BPzRBH4aH+7HmitKR0Sf/d24tT8u9FNTtVTW8jdU564qqRmtrki6Y9Kd06YpzoCiZsbhrpXSjYWn9H1B3Z/zMYU2yjm1E7s3B//Ki9Aygp1GcXWrOG2qn5RcGn"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "jeeva"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRG0RVvmeCmUUGDpTmV/TGGMuTVh42T8q045Y/d2IVrt1i/M5oVB4xcviU1td0DF017U6Pr0pyWwGil6A2/sxLJEpLulXFpu3Zs8fFitzWaop7jfVtgdsVwZNKRcjU72IrKolHbCb2/Sp89b7Fl2XVwURfLgyWnyUn/5BgAH6yfH1h6dd7YLaHUtmk1Eu1Ou315HMVD0rn+uRw+GUqY0YMgcVV0hWg5z1wFe0FSlqF99Ea95hFFO2rE0ODAcxg2OqmLN8KXvhLp9ZoDzRn/BEuMBgUD1YfZ6YMS7b387QlYxXiPWgWURhPhApfVFxDOEiGbiaaXIArlyItWNyTLAmBZ1LowWxro+wL3rw/zJeWPmI2SaFfUe0WakFswgYgBIUi82xMQD4s7FnTPRiPDcYb14+waXp1hG3+RmOTugRy+5H79e7se8XFkT2OY68YxZManEfRRxy3lJjCtgThNEX5U+N5u0OX1cMEsx0UfZ5vpvRQ9+MmjVpS3LiQH+bh7eE= jsankarapandian@devx.systems"
+              - name: "mekia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGw7OWMLrhdlrnK5ukijAsQ5NTqbWvQfldmJfaRdmEVZSKme7Km13i9udnchmvL94/eCHJYvNY4LSKtHNdXTYnyV1Vx6+42sCZfYb9Js2+vxaTLWD5h3S+EoW5w+XJ7oUXY/Dxmc0wkFN8er2KD3lbWknAv5m75hB7/qHxHK7ptG5Pk1Q0i4f2q1jtmmKqCYO0m+Mtm/jlUsyhoy1Ndz8KD8Tm9kp/dL6TIaKQU6PHeBS3FpCDo38OLbwIR6qksrux8KcSx1Y/1qf26je7K/hDFL1D3QNCaG9mOXaLUEXpmVX82rIN7AwXlgIOs0IhEetwxF/v4zj4EwmN6+DG9nmnYRaQu04/Axw1A1ymKcUZPJNAJOfbqdkuk2Vvop1KyuEXm/9uZv0O0vuWxPF1m8fsYbDHQrsXhRYpQchj47m3UgA8Jtfd9ryYqYyIef2yGBbkt4loS11Uo9HUeSRULGu4XSD52Chxt6qPVtj6UgO1taXQHsNS3oDsn9zxhC2Txpc= mekiae@Mekias-MacBook-Pro.local"
+              - name: "exactpro"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/a4ieC269CvLzDh3uyL1NdPVr5BqI/7Li9sJnpzt2lnHY8sa+PtkidZEjP1zxSA7tB2zYqLjMm5OcbdU4y5l2LtYsQqsm3y9T1Ypd4wTYRmcBwjF/wX+JivYfkgu0Q776CGV8Yv8Vt+X6DFsETmiHdZHGzpVgNAdN1En3b0sw5jwvskYgIJwFRmqcZbSn6K1qwHx6WmkgArzFRWR4DeWgRjGWnOnYzz5LI3ofNR/+lRm4H+H2qe+ZT9F8L7yi71RQimNJPMuZuYzzncR5u4w6mOyr3hK8piZJFY83ZYiux5PQyigfCm1vdHH6mUQBbsS4izVcwx2LBiz7pGnKTDkGhxWLMFBPfsFA+w0SUNRsxFN0V5aaUbpjBUDWsVdbd8Nxa+1oT1QasjskIydoRXYEpE0EDsUh20ZWSEuCSTcUzM0EeLE94sliMF7HhIWOocE6Pr3OwVNdM39vJlxKSpJpPrbu74H3Uj8yKsNZHqu9GczrZm9x59Hseg+AvqVm0LM= ec2-user@ip-10-2-0-244.us-east-2.compute.internal"
+              - name: "vmahendran"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCcDaDwbiFT0tZIRwKUObtz2V+L48cSkt5VGvDv6FuUb/L1kctftx2WxLzocnLKTqMEAHWyzHgmxRkHCzU5f77fDItQrG8s1oqiaJn24PPqWLh46wSPJvzxRf3fWPF11UpPiBol1OFDHAhmhC/14bHR5gX7kve9cFU7vO9w7gf8fI5wjftbRNO0hoMjynvQrYCAbuwdgDaTP8taCYfWn2KEXW3N1lJmTmam6+34rUVQACucBR+9TTyzKUdbCZ4tXiPkqE6I5QCHjf6H/B5Pjkj26hb8AJGD+dRgzi9XvmoIwkgNCm6YGYdPdC8tQ4ueIqlUDMecMaTQM170HZTVna7GtaPiOTP3dWNeE9B6NgDUqouCtHO2w7s8ja9F9kYoVnxhXl46hmwCNkdgHcx7EoeMnZR0kY9L6x8iCep3EJPhIRrwbKPcY4+/QTNSMk4SNhw9AMcVx7b+csH4ANOhMd/PA/k80HgfsQOkLmrHKLu9d0i4MIeJ4i2sQO2UJUFEiG0= vmahendran@devx.systems"
+              - name: "salwala"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDhfsGW+i/488fSiMW2DVZiS5l3cew2lX13aQMKUaH9e23zXvNShuDkkHZk0e3tHiZB9oqjsY5qn6Mk9gM7QRhvIesTnK5G1VbCStQjKNtpDGce9bCwb2GtKORuIkIoqKwP7aCm74sP7dM7ITon2qOR3wV+tO03GJjrQySY0KJcavHE56dL34Pp73idF9AapqGrTeTryIJ3QpioXNQ1s7jLgpVzmw3MSJ5R/h0C+zkEWlHRfll35bv+fSuG+76YBc1Xn//mYhjGNYiBqlCyEmIPfoIHQjxCBtjksLVwB8uQ6vpOAlWawrBl4eoUMfPXgITLWQx8RjB8Q2SG0QTnEPykAfKwY2HfBntbbs0pdMA3KEG+Te0eYSh9D9lwzX3T+RR926UWXKc2n0irJ52ys5hkA7mox/xotQ6BTV4VfgsKZiuwbaa1SzJyyjZJbOK5sSThH+Qp/bDRbDkqtvHIBt81NMzDDEXqSCXpbJLOSJVe6rNE0OxhqdnSmWvWh5Dv2gs= Seshu@ADMINIS-SP81DRQ"
+              - name: "alpha"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPAlH3z1wFZkzSZF9CNjhaKHmePACz+8psO66O8yx4tlnFdNeko/w91zLqAHVhF0+99R7/9IZhc8d33KJfp0ssxb6799nnpzaGC0h6Es3yJE+x6Sozri/HIsSbOg76kr14a+GNOf+yXeIUHOs7CDd4WqZ3GBtd01sqOrWZegEuDpULU2z91PkTMvfTmaqP7c9DJWmBsuL33RfoDeLp72YKyF8lYv8ygbdLvjqa/2pfOWXtyzGdvw+Rlsi/4ZhTCXqUHP71oo/6fAAiUIXmlTk9roh1wcx/Ro13pmt2JNhiYbNOE8izQ+EAhvmE5W7PQLCg8DD3ZfNnVxkEQ0kab1GgCSJa7tdKB0w1Tvln6iMDIs5mIV+IX8oOrXSEJwGDQkKa35Tb3SW2CwdgFCknU/oZxaeCxNeIa9tGM6zp+3b8T7GssvJcjZukGns6oYdlRLe9ntSemNQ5k9QB7GQIpng+iYUwxSmReaKufwuUho1RofoZTyX6R0L3vS7yfLuvGwfRVDsXZ2/lPyCYjO4R8fgz2vH7c0jOoCx1OJOJbBEMM9cY+WraMAAVAFuuGJB3w8IBefnJCoFaqxHXoajwzPSWFDH3N+uK62MD9sJk0ObmM6kLVP7BU0ZXAY3y2KltWPw1cOZ09iogut02XcTMlIEE52P1a2UIeTA+Vmny92gt7Q== alpha.sall@accenture.com"
+              - name: "cyonkee"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDBko8p79sZOGNHAj6qoKa0po5natoucVSGO2C23NQ4KNyYz7JM2ZKs3o6XccFlO1UBsVbFx09vCUr+u/r6wcycapj+NLLGlOiXuidD2xLrtAvghwgwgJYbjcgyoxLTmjjQxgRotfUL0M50OK7PhQ9myZgHf4vHe2HaECXqV1tPIY2laGRyDLMzIqa4VIz8yUo+DT9rqqChePbG/gtXCxQbVQpZH2sKxjEz/sbe/vjGRgETiDbrAJxMDIHMDdNiKN7qO8Ch2gRKxX+ZXFgv6SLrVQOhnC/kQRzM54YwTsb5fr8O6InCJBvOc8f6l+jsIrnY2tMJJipVMk/Hyw7yPnZ5Bx87nFZiXI+sekyG2rhLPMMkUtbT7eTLRhnAalh1HUdeCU4leYEeGENDMu763m0iwgusMtIsEeeuNBIUXRHT2cfrHen2rKo59nQ5cKWYkrsI3kQQfnfcFocRdOsiqAGDiuldY2bAV+HwAWMYkGxIkEwX4RwjXsRxVnl3k5KWOLk= cyonkee@Coles-MBP.tampabay.rr.com"
+              - name: "cvivas"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDzy1cxMGEJSuvwt0/FTjhHqxysiXSj9i29dcJicp9TLB/nAH2Re7rfjV0YG9tjT7SBXPWnX4/aDR47VotYfZDPtuyQN3MXgSK9vfd165B0Be0Tl7d0idIciJwISkVjMMSapzXYtgtxITWUbU1r34PriGPnIDyHJYC0dicWjtOc7MWAzi+GQzORtmW2mkYuAngORlZpCq4OzjWGu8mETeX5qAKLaUgbAabG/gDYmMXrhTtdFE2pYJ6V+sd8bMxo3PBjcv9UPhtSh3rSOZOoRAHpe9LlDGf2qw/xhxuCh8nIMcaMvpPxVtqGqj4VJu6KcxMDEC449fSmq16pboHmZ6S6ZJ2H4M5zS5ExnE+5PfYZMoZCdhRrJgtC+0SWaxeN4LGbs0VXUoJhJRo49XUlPjVOKAnNtO+3mkEbJc0ZiPjkAvYa2c+6LDznYIQxwbNbmaW9LUcSmTTVSx22Y66YY7IJzmvTVou16VU+PhDs3Z8ZAV/sIYHBYtshvzkAQuWgzx0= cvivasau@Carloss-MacBook-Pro.local"
+              - name: "buzz"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC8e+2Wh2z65weldOcTN6i+2NmJGNaPLGYUQ6xzE55yeD25wiwpCc9HpVNyVBlUIb+c5HkeEIKjhNo2gofSPAqr3o11/sROehZ+9KY41xc71DBs8qQLgSeNpEB+k3n+PJFpOFUcJ5o1DBZ2Q5Ph+I36Oni4MzDy3WldFH+Imp3PpzSSd+1ZHqELXjB/VqLfJHlnHEFrLx8s0B4SPJ15Pg+8gFL8tQlKRijyXIqz8unRq68k9BQWwMY9UAbfm/0P20jMQiBUOn0H6MGOFXtpLT99K11KwhhhE9f6yBfkCxvp5+TqeNc+H2jtj+1IAc289PThXwp3q4Iy25UPC+1i0IMeyM17DuKxqdgmA4cqEUXUtGY3IzAm2mA/IC15f8ypiCPqWvzU+7GDnKZAAtfDFk2efwgSLkwNbBnD4f7Ewh0C6DmL6D238yxn02nKZzPkwRciwErHV07d4zpHYl7JMdiANAvj3JkJoGt07ZXRBolTNLRd7+ThRfAj4iAos3m5ScE= buzz@Buzzs-MacBook-Pro-2.local"
+              - name: "tester2"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDcZolrEArhreAVnkpn8K7/zHbOfkc+eLmNiys7Y4hFgK9+4OQh5Y4wm4Y/x/vhkuGwc4dqad8Q475tx0/apy0Vs9BO4Fdbie97R2cieJFuMdeeywHtd5SzHNVPLs0+tlc28qnUdi5bt//LYnaM/UeuGP400jFbnBUm2YdkgtH3n9IaP/0kew5RwLJlm3qU778uTkW51AJeMkUPsLvdSUXRnrxtnIPxqTr8YD9YBT8PZ8WqC8SIDhyqVIDozrpOuTeXiL86v6qs82XKyLeUGK/ZJ+qQ5sywd3rJplld7cEzXjEFLQsuhhLueYJNrE6XUqifv7LQmEPicWqHDY3FY3WB gbladhedani\\pagraw11@USV04879793"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.2.0.0/16"
+            public_subnets:
+              - "10.2.0.0/24"
+              - "10.2.1.0/24"
+            private_subnets:
+              - "10.2.2.0/24"
+              - "10.2.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+              # # Dev instance
+              # - "52.57.247.164/32"
+              # - "90.218.123.166/32"
+              # # Dev VPN
+              # - "3.124.141.103/32"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+            subnet_tags:
+              Environment: "uat"
+          eks:
+            instance_type: "t3.xlarge"   # Instance type of EC2 nodes for K8s cluster
+            worker_policies:
+              - "AWSCodeArtifactReadOnlyAccess"
+              - "CloudWatchAgentServerPolicy"
+          bastion:
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Bastions
+          vault:
+            min_size: "1"
+            max_size: "1"
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Vault
+          rds:
+            # Ensure the db_identifier is unique and does not contain special chars as this will be the RDS DBName
+            db_identifier: "uat2backenddb"
+            db_instance_class: "db.r5.large"
+            db_allocated_storage: "50"
+            db_user: "dbadmin"        # Do not use "admin" as the username as it is reserved
+            db_port: "5432"
+            db_backup_retention: "1"
+            #Password is temporarily hardcoded, per Sownak: looking into use of AWS Secrets Manager
+            db_password: "uat2923_Password_t3st"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          # MQ Endpoint Service (below components will be configured in infra as code later, currently using hardcoded due to manual creation)
+          mq:
+            mq_endpoint_service: "com.amazonaws.vpce.us-east-2.vpce-svc-0ef1a08d396a3cc2a"
+          # Codepipeline for BAF
+          pipeline:
+            namespace: "uat2"
+            stage: "pilot"
+            repo: ion-blockchain-automation-framework
+            branch: "uat2"
+            git_username: "UATEnvServiceUser"
+            git_ssh_keyname: "APKA4PUKIGILGVC6JRUQ"
+            buildspec: "automation/buildspec.yml"    # The CENM Env must use automation/buildspec.yml, other Env Must use automation/buildspec_addorg.yml
+            cenm_environment: "uat2-backend"        # meta.name of the cluster were CENM will be deployed
+            codebuild_role: "ION_CodeBuild"
+            codepipeline_role: "ION_CodePipeline"
+            artifact_store: "ion-infrastructure-uat-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "uat-pilot-cross-account-kms-unseal-key"
+
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: uat3-backend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"      # can be "planned", "present", "absent"
+        force_init: "yes"
+        show_plan: false      # can be "true", then it will show the plan in console
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to ion-infrastructure-prereqs for further instructions on how to create the backend
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-uat-remote-state"
+          key: "ion-terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-uat-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "uat"
+          k8:
+            scale_schedule:
+              # must be lower case true for true, only supports "true" or "false"
+              enabled: "false"
+              scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+              scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "40"
+            min_size: "9"
+            desired_size: "9"
+            root_volume_size: "40"
+            cluster_version: "1.16"
+          vault:
+            port: "8200"
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCLbknzuNBh1tlDRmOIz6VA0f2Pu27MTmvw4cJRN1yg6R+rjZxpe6IRDMRJ+q/VLXIHcjNXTBdZAvOPOeCd5oZf/mGHanUEGiWL02ha+WyKwe65++m6OqnG6iCDpJzvSib3uoQZJXVb8Ebu0kxNSadzx66cglUItMjmJw8lMG5u9V9ZfhhU0zyoPGjUPIV/UUL1DuomeeeqQOihtgt000MuLlbz89BPzRBH4aH+7HmitKR0Sf/d24tT8u9FNTtVTW8jdU564qqRmtrki6Y9Kd06YpzoCiZsbhrpXSjYWn9H1B3Z/zMYU2yjm1E7s3B//Ki9Aygp1GcXWrOG2qn5RcGn"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "alpha"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPAlH3z1wFZkzSZF9CNjhaKHmePACz+8psO66O8yx4tlnFdNeko/w91zLqAHVhF0+99R7/9IZhc8d33KJfp0ssxb6799nnpzaGC0h6Es3yJE+x6Sozri/HIsSbOg76kr14a+GNOf+yXeIUHOs7CDd4WqZ3GBtd01sqOrWZegEuDpULU2z91PkTMvfTmaqP7c9DJWmBsuL33RfoDeLp72YKyF8lYv8ygbdLvjqa/2pfOWXtyzGdvw+Rlsi/4ZhTCXqUHP71oo/6fAAiUIXmlTk9roh1wcx/Ro13pmt2JNhiYbNOE8izQ+EAhvmE5W7PQLCg8DD3ZfNnVxkEQ0kab1GgCSJa7tdKB0w1Tvln6iMDIs5mIV+IX8oOrXSEJwGDQkKa35Tb3SW2CwdgFCknU/oZxaeCxNeIa9tGM6zp+3b8T7GssvJcjZukGns6oYdlRLe9ntSemNQ5k9QB7GQIpng+iYUwxSmReaKufwuUho1RofoZTyX6R0L3vS7yfLuvGwfRVDsXZ2/lPyCYjO4R8fgz2vH7c0jOoCx1OJOJbBEMM9cY+WraMAAVAFuuGJB3w8IBefnJCoFaqxHXoajwzPSWFDH3N+uK62MD9sJk0ObmM6kLVP7BU0ZXAY3y2KltWPw1cOZ09iogut02XcTMlIEE52P1a2UIeTA+Vmny92gt7Q== alpha.sall@accenture.com"
+          domain:
+            prefix: "uat3"
+            name: "uat.devx.systems" # main route 53 domain name hosted zone
+          bastion:
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCLbknzuNBh1tlDRmOIz6VA0f2Pu27MTmvw4cJRN1yg6R+rjZxpe6IRDMRJ+q/VLXIHcjNXTBdZAvOPOeCd5oZf/mGHanUEGiWL02ha+WyKwe65++m6OqnG6iCDpJzvSib3uoQZJXVb8Ebu0kxNSadzx66cglUItMjmJw8lMG5u9V9ZfhhU0zyoPGjUPIV/UUL1DuomeeeqQOihtgt000MuLlbz89BPzRBH4aH+7HmitKR0Sf/d24tT8u9FNTtVTW8jdU564qqRmtrki6Y9Kd06YpzoCiZsbhrpXSjYWn9H1B3Z/zMYU2yjm1E7s3B//Ki9Aygp1GcXWrOG2qn5RcGn"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "jeeva"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRG0RVvmeCmUUGDpTmV/TGGMuTVh42T8q045Y/d2IVrt1i/M5oVB4xcviU1td0DF017U6Pr0pyWwGil6A2/sxLJEpLulXFpu3Zs8fFitzWaop7jfVtgdsVwZNKRcjU72IrKolHbCb2/Sp89b7Fl2XVwURfLgyWnyUn/5BgAH6yfH1h6dd7YLaHUtmk1Eu1Ou315HMVD0rn+uRw+GUqY0YMgcVV0hWg5z1wFe0FSlqF99Ea95hFFO2rE0ODAcxg2OqmLN8KXvhLp9ZoDzRn/BEuMBgUD1YfZ6YMS7b387QlYxXiPWgWURhPhApfVFxDOEiGbiaaXIArlyItWNyTLAmBZ1LowWxro+wL3rw/zJeWPmI2SaFfUe0WakFswgYgBIUi82xMQD4s7FnTPRiPDcYb14+waXp1hG3+RmOTugRy+5H79e7se8XFkT2OY68YxZManEfRRxy3lJjCtgThNEX5U+N5u0OX1cMEsx0UfZ5vpvRQ9+MmjVpS3LiQH+bh7eE= jsankarapandian@devx.systems"
+              - name: "mekia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGw7OWMLrhdlrnK5ukijAsQ5NTqbWvQfldmJfaRdmEVZSKme7Km13i9udnchmvL94/eCHJYvNY4LSKtHNdXTYnyV1Vx6+42sCZfYb9Js2+vxaTLWD5h3S+EoW5w+XJ7oUXY/Dxmc0wkFN8er2KD3lbWknAv5m75hB7/qHxHK7ptG5Pk1Q0i4f2q1jtmmKqCYO0m+Mtm/jlUsyhoy1Ndz8KD8Tm9kp/dL6TIaKQU6PHeBS3FpCDo38OLbwIR6qksrux8KcSx1Y/1qf26je7K/hDFL1D3QNCaG9mOXaLUEXpmVX82rIN7AwXlgIOs0IhEetwxF/v4zj4EwmN6+DG9nmnYRaQu04/Axw1A1ymKcUZPJNAJOfbqdkuk2Vvop1KyuEXm/9uZv0O0vuWxPF1m8fsYbDHQrsXhRYpQchj47m3UgA8Jtfd9ryYqYyIef2yGBbkt4loS11Uo9HUeSRULGu4XSD52Chxt6qPVtj6UgO1taXQHsNS3oDsn9zxhC2Txpc= mekiae@Mekias-MacBook-Pro.local"
+              - name: "exactpro"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/a4ieC269CvLzDh3uyL1NdPVr5BqI/7Li9sJnpzt2lnHY8sa+PtkidZEjP1zxSA7tB2zYqLjMm5OcbdU4y5l2LtYsQqsm3y9T1Ypd4wTYRmcBwjF/wX+JivYfkgu0Q776CGV8Yv8Vt+X6DFsETmiHdZHGzpVgNAdN1En3b0sw5jwvskYgIJwFRmqcZbSn6K1qwHx6WmkgArzFRWR4DeWgRjGWnOnYzz5LI3ofNR/+lRm4H+H2qe+ZT9F8L7yi71RQimNJPMuZuYzzncR5u4w6mOyr3hK8piZJFY83ZYiux5PQyigfCm1vdHH6mUQBbsS4izVcwx2LBiz7pGnKTDkGhxWLMFBPfsFA+w0SUNRsxFN0V5aaUbpjBUDWsVdbd8Nxa+1oT1QasjskIydoRXYEpE0EDsUh20ZWSEuCSTcUzM0EeLE94sliMF7HhIWOocE6Pr3OwVNdM39vJlxKSpJpPrbu74H3Uj8yKsNZHqu9GczrZm9x59Hseg+AvqVm0LM= ec2-user@ip-10-2-0-244.us-east-2.compute.internal"
+              - name: "vmahendran"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCcDaDwbiFT0tZIRwKUObtz2V+L48cSkt5VGvDv6FuUb/L1kctftx2WxLzocnLKTqMEAHWyzHgmxRkHCzU5f77fDItQrG8s1oqiaJn24PPqWLh46wSPJvzxRf3fWPF11UpPiBol1OFDHAhmhC/14bHR5gX7kve9cFU7vO9w7gf8fI5wjftbRNO0hoMjynvQrYCAbuwdgDaTP8taCYfWn2KEXW3N1lJmTmam6+34rUVQACucBR+9TTyzKUdbCZ4tXiPkqE6I5QCHjf6H/B5Pjkj26hb8AJGD+dRgzi9XvmoIwkgNCm6YGYdPdC8tQ4ueIqlUDMecMaTQM170HZTVna7GtaPiOTP3dWNeE9B6NgDUqouCtHO2w7s8ja9F9kYoVnxhXl46hmwCNkdgHcx7EoeMnZR0kY9L6x8iCep3EJPhIRrwbKPcY4+/QTNSMk4SNhw9AMcVx7b+csH4ANOhMd/PA/k80HgfsQOkLmrHKLu9d0i4MIeJ4i2sQO2UJUFEiG0= vmahendran@devx.systems"
+              - name: "carlos"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCllld0ogrtV+rIFg+7QPhvUn5tWK43AuxXSEk95sEMDG/x9Xm8yw56YNo27/dnofIix2pbxARjrHuyLI8uIoWzW7zEb3/0UNzWVPwzPOQYYelO/4SXMfKpwDMoTnn+xhsMDrWgSko8B1XyA1/lIYO0il4who/V/GQcM3sBtnQqb/ks4qBRSGwyLUFcfUJYNZrSxyHJGlXhh5JZDYEL8D5PjWSO45Rh3NnixgGcuOw8trMdTdC3uYz3WS02V/njmhprxJ84n0FJFM/bhpQAVSKA+xqBmF/UjEpHwh08nZHVHFnzAEB/jt7ANCo4F3nCgEK9TmXOb+Jq1V9z3cOR3usz85gZWMhDjkrwMELA4z83dZyQEpMPouMmWgohjsmwEeaP8MqKst2Y39+OJNhyQORZoWsucXlt8ebrSRxOuJQb/88YsmZ5vWJobdAbAL8CclEp+jY3RrDFWxgt7tsxC76DUAnqCsN2Um/SqIyFaYybygmY1pBSF8n+XwoGx2WM6LU= carlos@devx.systems"
+              - name: "alpha"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPAlH3z1wFZkzSZF9CNjhaKHmePACz+8psO66O8yx4tlnFdNeko/w91zLqAHVhF0+99R7/9IZhc8d33KJfp0ssxb6799nnpzaGC0h6Es3yJE+x6Sozri/HIsSbOg76kr14a+GNOf+yXeIUHOs7CDd4WqZ3GBtd01sqOrWZegEuDpULU2z91PkTMvfTmaqP7c9DJWmBsuL33RfoDeLp72YKyF8lYv8ygbdLvjqa/2pfOWXtyzGdvw+Rlsi/4ZhTCXqUHP71oo/6fAAiUIXmlTk9roh1wcx/Ro13pmt2JNhiYbNOE8izQ+EAhvmE5W7PQLCg8DD3ZfNnVxkEQ0kab1GgCSJa7tdKB0w1Tvln6iMDIs5mIV+IX8oOrXSEJwGDQkKa35Tb3SW2CwdgFCknU/oZxaeCxNeIa9tGM6zp+3b8T7GssvJcjZukGns6oYdlRLe9ntSemNQ5k9QB7GQIpng+iYUwxSmReaKufwuUho1RofoZTyX6R0L3vS7yfLuvGwfRVDsXZ2/lPyCYjO4R8fgz2vH7c0jOoCx1OJOJbBEMM9cY+WraMAAVAFuuGJB3w8IBefnJCoFaqxHXoajwzPSWFDH3N+uK62MD9sJk0ObmM6kLVP7BU0ZXAY3y2KltWPw1cOZ09iogut02XcTMlIEE52P1a2UIeTA+Vmny92gt7Q== alpha.sall@accenture.com"
+              - name: "cyonkee"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDBko8p79sZOGNHAj6qoKa0po5natoucVSGO2C23NQ4KNyYz7JM2ZKs3o6XccFlO1UBsVbFx09vCUr+u/r6wcycapj+NLLGlOiXuidD2xLrtAvghwgwgJYbjcgyoxLTmjjQxgRotfUL0M50OK7PhQ9myZgHf4vHe2HaECXqV1tPIY2laGRyDLMzIqa4VIz8yUo+DT9rqqChePbG/gtXCxQbVQpZH2sKxjEz/sbe/vjGRgETiDbrAJxMDIHMDdNiKN7qO8Ch2gRKxX+ZXFgv6SLrVQOhnC/kQRzM54YwTsb5fr8O6InCJBvOc8f6l+jsIrnY2tMJJipVMk/Hyw7yPnZ5Bx87nFZiXI+sekyG2rhLPMMkUtbT7eTLRhnAalh1HUdeCU4leYEeGENDMu763m0iwgusMtIsEeeuNBIUXRHT2cfrHen2rKo59nQ5cKWYkrsI3kQQfnfcFocRdOsiqAGDiuldY2bAV+HwAWMYkGxIkEwX4RwjXsRxVnl3k5KWOLk= cyonkee@Coles-MBP.tampabay.rr.com"
+              - name: "cvivas"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDzy1cxMGEJSuvwt0/FTjhHqxysiXSj9i29dcJicp9TLB/nAH2Re7rfjV0YG9tjT7SBXPWnX4/aDR47VotYfZDPtuyQN3MXgSK9vfd165B0Be0Tl7d0idIciJwISkVjMMSapzXYtgtxITWUbU1r34PriGPnIDyHJYC0dicWjtOc7MWAzi+GQzORtmW2mkYuAngORlZpCq4OzjWGu8mETeX5qAKLaUgbAabG/gDYmMXrhTtdFE2pYJ6V+sd8bMxo3PBjcv9UPhtSh3rSOZOoRAHpe9LlDGf2qw/xhxuCh8nIMcaMvpPxVtqGqj4VJu6KcxMDEC449fSmq16pboHmZ6S6ZJ2H4M5zS5ExnE+5PfYZMoZCdhRrJgtC+0SWaxeN4LGbs0VXUoJhJRo49XUlPjVOKAnNtO+3mkEbJc0ZiPjkAvYa2c+6LDznYIQxwbNbmaW9LUcSmTTVSx22Y66YY7IJzmvTVou16VU+PhDs3Z8ZAV/sIYHBYtshvzkAQuWgzx0= cvivasau@Carloss-MacBook-Pro.local"
+              - name: "tester3"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCbFMObreyn0U4ulwRvFWmXeZk8wGddRMZvlCmxREUVbLx2YaS3Uqbpu1oSGytSuw+fO71wojZuVc99AaZ2g1jfWrC13tl6hVYav1rHC81WPqGPkvrtJH7K+lT907OXMjb2+RlVuBrmGhCedHrMD3zIZrPKVzbA8ZP7gBQk2J/PA4rVbcv33Ho/zNbPnkNQSMITH7x1arYSeNwPE3wfbTnynLV4qUyLzcaLO72PchvPzYP7ZEYX2fgto9Ao/X2kGG+n+w5aIZlC2Ukcz0IydpwuZMKv3v8/C4gEMl77oCOutUjJQIZK+z3TSxAsSL8w6u6rNxxsexYko6rH6IK2Hz0d D574361@WCAR217007"
+              - name: "tester15"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDnJI4AiCMMrkwtoTX8SxTE5+qDVTS/BduBQiTRjYx6BN+c+zDZ/oNU1wDe/9HgKxS7Ck7w7HZEqwm5Pjx3jKxjxErL1+5RRYeI1NY2rfkQtetDbLEqcXnnIjg8oYG3tV9ifSrPtQSSMQEAITjndsh32wfu86MbXU7il1kyNDljMJw/2J/Y6u2zmnO+PuxeYJt9tjR+tnlzz2Phl4nAQTNtaPmSDzvXsQusIA+/Qx1TwICTB1+iMQTnSNLYjjLTT1JeGv8m16tKwfgy+CnCebQZpV4kaWKknggBjmbnADK7udUn/cXjQ6CTXp4ph+p/wVs9BGQyYxTbLNYvBEopRdFPYuPf3mApVMEpXKbbrZqHqW1CAL0UcTnwwRrDA5DErON73M231gLdWBXCyleC+GCWhoE+JV53aShkz7XV/h18N3KzgzMHqxTXyxGz7sCKGm92XxFXy8FDqSzss8Xfw10irVzliiK3jBpEbLxrYgSXlLTacCx/XGEDLHKZp9KUUPc= blockchain@MacBook-Pro.local"
+              - name: "tester31"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCoGk3NqJ7CHZpWbL6KSC6U9GPDBVZuE3ZfCiE/7nqN91SWij7ann2yVB9hy8S9pRZBNd8gGRLXef7ZzUqZr/+213FnsHb3hCZSsxkq4I+O7w3i8wc8sZy7QOdAoNkP4BUIxnREWCTUQ6ys0GjHHWlozWNhko6d8VUC/wDEf/JFUqrHXmNKhq+hRdLo3hJcABrQJ4jYuxeUSWKeStO71T27KPEjw42lELhgXQJJYR/0roovFpiEaNs26x4iwUlXx52eXTMzzU9fPjLh9GDhxtW4FixGnG35oRhLZqptSutYPSUxJKXoGgBLObz25nzYD6PWHXSqwbtIjcPY20mnzZGXl84bSKDmqM+x06su6cTAYRXaWnNT5hlCtAt7fbBocR3flIMj6zGDu9rr+ABjk95yTJkYtm6I/mv8BMuMVT8maS0dAKciGorcKZ05MS4I5qwLWzHnaOLddLi6jFCeqGKAsMAzvNqfGVj1+0Mx+9+GoXjAeH8kpkejAWN5f8u7OJs= ganeshkanagavel@ganeshs-air.lan"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2c"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.3.0.0/16"
+            public_subnets:
+              - "10.3.0.0/24"
+              - "10.3.1.0/24"
+            private_subnets:
+              - "10.3.2.0/24"
+              - "10.3.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+              # # Dev instance
+              # - "52.57.247.164/32"
+              # - "90.218.123.166/32"
+              # # Dev VPN
+              # - "3.124.141.103/32"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+            subnet_tags:
+              Environment: "uat"
+          eks:
+            instance_type: "t3.xlarge"   # Instance type of EC2 nodes for K8s cluster
+            worker_policies:
+              - "AWSCodeArtifactReadOnlyAccess"
+              - "CloudWatchAgentServerPolicy"
+          bastion:
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Bastions
+          vault:
+            min_size: "1"
+            max_size: "1"
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Vault
+          rds:
+            # Ensure the db_identifier is unique and does not contain special chars as this will be the RDS DBName
+            db_identifier: "uat3backenddb"
+            db_instance_class: "db.r5.large"
+            db_allocated_storage: "50"
+            db_user: "dbadmin"        # Do not use "admin" as the username as it is reserved
+            db_port: "5432"
+            db_backup_retention: "1"
+            #Password is temporarily hardcoded, per Sownak: looking into use of AWS Secrets Manager
+            db_password: "uat3784_Password_t3st"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          # MQ Endpoint Service (below components will be configured in infra as code later, currently using hardcoded due to manual creation)
+          mq:
+            mq_endpoint_service: "com.amazonaws.vpce.us-east-2.vpce-svc-0ef1a08d396a3cc2a"
+          # Codepipeline for BAF
+          pipeline:
+            namespace: "uat3"
+            stage: "pilot"
+            repo: ion-blockchain-automation-framework
+            branch: "uat3"
+            git_username: "UATEnvServiceUser"
+            git_ssh_keyname: "APKA4PUKIGILGVC6JRUQ"
+            buildspec: "automation/buildspec.yml"    # The CENM Env must use automation/buildspec.yml, other Env Must use automation/buildspec_addorg.yml
+            cenm_environment: "uat3-backend"        # meta.name of the cluster were CENM will be deployed
+            codebuild_role: "ION_CodeBuild"
+            codepipeline_role: "ION_CodePipeline"
+            artifact_store: "ion-infrastructure-uat-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "uat-pilot-cross-account-kms-unseal-key"
+
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: uat4-backend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"      # can be "planned", "present", "absent"
+        force_init: "yes"
+        show_plan: false      # can be "true", then it will show the plan in console
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to ion-infrastructure-prereqs for further instructions on how to create the backend
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-uat-remote-state"
+          key: "ion-terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-uat-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "uat"
+          k8:
+            scale_schedule:
+              # must be lower case true for true, only supports "true" or "false"
+              enabled: "false"
+              scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+              scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "40"
+            min_size: "9"
+            desired_size: "9"
+            root_volume_size: "40"
+            cluster_version: "1.16"
+          vault:
+            port: "8200"
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCLbknzuNBh1tlDRmOIz6VA0f2Pu27MTmvw4cJRN1yg6R+rjZxpe6IRDMRJ+q/VLXIHcjNXTBdZAvOPOeCd5oZf/mGHanUEGiWL02ha+WyKwe65++m6OqnG6iCDpJzvSib3uoQZJXVb8Ebu0kxNSadzx66cglUItMjmJw8lMG5u9V9ZfhhU0zyoPGjUPIV/UUL1DuomeeeqQOihtgt000MuLlbz89BPzRBH4aH+7HmitKR0Sf/d24tT8u9FNTtVTW8jdU564qqRmtrki6Y9Kd06YpzoCiZsbhrpXSjYWn9H1B3Z/zMYU2yjm1E7s3B//Ki9Aygp1GcXWrOG2qn5RcGn"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "alpha"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPAlH3z1wFZkzSZF9CNjhaKHmePACz+8psO66O8yx4tlnFdNeko/w91zLqAHVhF0+99R7/9IZhc8d33KJfp0ssxb6799nnpzaGC0h6Es3yJE+x6Sozri/HIsSbOg76kr14a+GNOf+yXeIUHOs7CDd4WqZ3GBtd01sqOrWZegEuDpULU2z91PkTMvfTmaqP7c9DJWmBsuL33RfoDeLp72YKyF8lYv8ygbdLvjqa/2pfOWXtyzGdvw+Rlsi/4ZhTCXqUHP71oo/6fAAiUIXmlTk9roh1wcx/Ro13pmt2JNhiYbNOE8izQ+EAhvmE5W7PQLCg8DD3ZfNnVxkEQ0kab1GgCSJa7tdKB0w1Tvln6iMDIs5mIV+IX8oOrXSEJwGDQkKa35Tb3SW2CwdgFCknU/oZxaeCxNeIa9tGM6zp+3b8T7GssvJcjZukGns6oYdlRLe9ntSemNQ5k9QB7GQIpng+iYUwxSmReaKufwuUho1RofoZTyX6R0L3vS7yfLuvGwfRVDsXZ2/lPyCYjO4R8fgz2vH7c0jOoCx1OJOJbBEMM9cY+WraMAAVAFuuGJB3w8IBefnJCoFaqxHXoajwzPSWFDH3N+uK62MD9sJk0ObmM6kLVP7BU0ZXAY3y2KltWPw1cOZ09iogut02XcTMlIEE52P1a2UIeTA+Vmny92gt7Q== alpha.sall@accenture.com"
+          domain:
+            prefix: "uat4"
+            name: "uat.devx.systems" # main route 53 domain name hosted zone
+          bastion:
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCLbknzuNBh1tlDRmOIz6VA0f2Pu27MTmvw4cJRN1yg6R+rjZxpe6IRDMRJ+q/VLXIHcjNXTBdZAvOPOeCd5oZf/mGHanUEGiWL02ha+WyKwe65++m6OqnG6iCDpJzvSib3uoQZJXVb8Ebu0kxNSadzx66cglUItMjmJw8lMG5u9V9ZfhhU0zyoPGjUPIV/UUL1DuomeeeqQOihtgt000MuLlbz89BPzRBH4aH+7HmitKR0Sf/d24tT8u9FNTtVTW8jdU564qqRmtrki6Y9Kd06YpzoCiZsbhrpXSjYWn9H1B3Z/zMYU2yjm1E7s3B//Ki9Aygp1GcXWrOG2qn5RcGn"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "jeeva"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRG0RVvmeCmUUGDpTmV/TGGMuTVh42T8q045Y/d2IVrt1i/M5oVB4xcviU1td0DF017U6Pr0pyWwGil6A2/sxLJEpLulXFpu3Zs8fFitzWaop7jfVtgdsVwZNKRcjU72IrKolHbCb2/Sp89b7Fl2XVwURfLgyWnyUn/5BgAH6yfH1h6dd7YLaHUtmk1Eu1Ou315HMVD0rn+uRw+GUqY0YMgcVV0hWg5z1wFe0FSlqF99Ea95hFFO2rE0ODAcxg2OqmLN8KXvhLp9ZoDzRn/BEuMBgUD1YfZ6YMS7b387QlYxXiPWgWURhPhApfVFxDOEiGbiaaXIArlyItWNyTLAmBZ1LowWxro+wL3rw/zJeWPmI2SaFfUe0WakFswgYgBIUi82xMQD4s7FnTPRiPDcYb14+waXp1hG3+RmOTugRy+5H79e7se8XFkT2OY68YxZManEfRRxy3lJjCtgThNEX5U+N5u0OX1cMEsx0UfZ5vpvRQ9+MmjVpS3LiQH+bh7eE= jsankarapandian@devx.systems"
+              - name: "mekia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGw7OWMLrhdlrnK5ukijAsQ5NTqbWvQfldmJfaRdmEVZSKme7Km13i9udnchmvL94/eCHJYvNY4LSKtHNdXTYnyV1Vx6+42sCZfYb9Js2+vxaTLWD5h3S+EoW5w+XJ7oUXY/Dxmc0wkFN8er2KD3lbWknAv5m75hB7/qHxHK7ptG5Pk1Q0i4f2q1jtmmKqCYO0m+Mtm/jlUsyhoy1Ndz8KD8Tm9kp/dL6TIaKQU6PHeBS3FpCDo38OLbwIR6qksrux8KcSx1Y/1qf26je7K/hDFL1D3QNCaG9mOXaLUEXpmVX82rIN7AwXlgIOs0IhEetwxF/v4zj4EwmN6+DG9nmnYRaQu04/Axw1A1ymKcUZPJNAJOfbqdkuk2Vvop1KyuEXm/9uZv0O0vuWxPF1m8fsYbDHQrsXhRYpQchj47m3UgA8Jtfd9ryYqYyIef2yGBbkt4loS11Uo9HUeSRULGu4XSD52Chxt6qPVtj6UgO1taXQHsNS3oDsn9zxhC2Txpc= mekiae@Mekias-MacBook-Pro.local"
+              - name: "exactpro"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/a4ieC269CvLzDh3uyL1NdPVr5BqI/7Li9sJnpzt2lnHY8sa+PtkidZEjP1zxSA7tB2zYqLjMm5OcbdU4y5l2LtYsQqsm3y9T1Ypd4wTYRmcBwjF/wX+JivYfkgu0Q776CGV8Yv8Vt+X6DFsETmiHdZHGzpVgNAdN1En3b0sw5jwvskYgIJwFRmqcZbSn6K1qwHx6WmkgArzFRWR4DeWgRjGWnOnYzz5LI3ofNR/+lRm4H+H2qe+ZT9F8L7yi71RQimNJPMuZuYzzncR5u4w6mOyr3hK8piZJFY83ZYiux5PQyigfCm1vdHH6mUQBbsS4izVcwx2LBiz7pGnKTDkGhxWLMFBPfsFA+w0SUNRsxFN0V5aaUbpjBUDWsVdbd8Nxa+1oT1QasjskIydoRXYEpE0EDsUh20ZWSEuCSTcUzM0EeLE94sliMF7HhIWOocE6Pr3OwVNdM39vJlxKSpJpPrbu74H3Uj8yKsNZHqu9GczrZm9x59Hseg+AvqVm0LM= ec2-user@ip-10-2-0-244.us-east-2.compute.internal"
+              - name: "vmahendran"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCcDaDwbiFT0tZIRwKUObtz2V+L48cSkt5VGvDv6FuUb/L1kctftx2WxLzocnLKTqMEAHWyzHgmxRkHCzU5f77fDItQrG8s1oqiaJn24PPqWLh46wSPJvzxRf3fWPF11UpPiBol1OFDHAhmhC/14bHR5gX7kve9cFU7vO9w7gf8fI5wjftbRNO0hoMjynvQrYCAbuwdgDaTP8taCYfWn2KEXW3N1lJmTmam6+34rUVQACucBR+9TTyzKUdbCZ4tXiPkqE6I5QCHjf6H/B5Pjkj26hb8AJGD+dRgzi9XvmoIwkgNCm6YGYdPdC8tQ4ueIqlUDMecMaTQM170HZTVna7GtaPiOTP3dWNeE9B6NgDUqouCtHO2w7s8ja9F9kYoVnxhXl46hmwCNkdgHcx7EoeMnZR0kY9L6x8iCep3EJPhIRrwbKPcY4+/QTNSMk4SNhw9AMcVx7b+csH4ANOhMd/PA/k80HgfsQOkLmrHKLu9d0i4MIeJ4i2sQO2UJUFEiG0= vmahendran@devx.systems"
+              - name: "alpha"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPAlH3z1wFZkzSZF9CNjhaKHmePACz+8psO66O8yx4tlnFdNeko/w91zLqAHVhF0+99R7/9IZhc8d33KJfp0ssxb6799nnpzaGC0h6Es3yJE+x6Sozri/HIsSbOg76kr14a+GNOf+yXeIUHOs7CDd4WqZ3GBtd01sqOrWZegEuDpULU2z91PkTMvfTmaqP7c9DJWmBsuL33RfoDeLp72YKyF8lYv8ygbdLvjqa/2pfOWXtyzGdvw+Rlsi/4ZhTCXqUHP71oo/6fAAiUIXmlTk9roh1wcx/Ro13pmt2JNhiYbNOE8izQ+EAhvmE5W7PQLCg8DD3ZfNnVxkEQ0kab1GgCSJa7tdKB0w1Tvln6iMDIs5mIV+IX8oOrXSEJwGDQkKa35Tb3SW2CwdgFCknU/oZxaeCxNeIa9tGM6zp+3b8T7GssvJcjZukGns6oYdlRLe9ntSemNQ5k9QB7GQIpng+iYUwxSmReaKufwuUho1RofoZTyX6R0L3vS7yfLuvGwfRVDsXZ2/lPyCYjO4R8fgz2vH7c0jOoCx1OJOJbBEMM9cY+WraMAAVAFuuGJB3w8IBefnJCoFaqxHXoajwzPSWFDH3N+uK62MD9sJk0ObmM6kLVP7BU0ZXAY3y2KltWPw1cOZ09iogut02XcTMlIEE52P1a2UIeTA+Vmny92gt7Q== alpha.sall@accenture.com"
+              - name: "salwala"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDhfsGW+i/488fSiMW2DVZiS5l3cew2lX13aQMKUaH9e23zXvNShuDkkHZk0e3tHiZB9oqjsY5qn6Mk9gM7QRhvIesTnK5G1VbCStQjKNtpDGce9bCwb2GtKORuIkIoqKwP7aCm74sP7dM7ITon2qOR3wV+tO03GJjrQySY0KJcavHE56dL34Pp73idF9AapqGrTeTryIJ3QpioXNQ1s7jLgpVzmw3MSJ5R/h0C+zkEWlHRfll35bv+fSuG+76YBc1Xn//mYhjGNYiBqlCyEmIPfoIHQjxCBtjksLVwB8uQ6vpOAlWawrBl4eoUMfPXgITLWQx8RjB8Q2SG0QTnEPykAfKwY2HfBntbbs0pdMA3KEG+Te0eYSh9D9lwzX3T+RR926UWXKc2n0irJ52ys5hkA7mox/xotQ6BTV4VfgsKZiuwbaa1SzJyyjZJbOK5sSThH+Qp/bDRbDkqtvHIBt81NMzDDEXqSCXpbJLOSJVe6rNE0OxhqdnSmWvWh5Dv2gs= Seshu@ADMINIS-SP81DRQ"
+              - name: "cyonkee"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDBko8p79sZOGNHAj6qoKa0po5natoucVSGO2C23NQ4KNyYz7JM2ZKs3o6XccFlO1UBsVbFx09vCUr+u/r6wcycapj+NLLGlOiXuidD2xLrtAvghwgwgJYbjcgyoxLTmjjQxgRotfUL0M50OK7PhQ9myZgHf4vHe2HaECXqV1tPIY2laGRyDLMzIqa4VIz8yUo+DT9rqqChePbG/gtXCxQbVQpZH2sKxjEz/sbe/vjGRgETiDbrAJxMDIHMDdNiKN7qO8Ch2gRKxX+ZXFgv6SLrVQOhnC/kQRzM54YwTsb5fr8O6InCJBvOc8f6l+jsIrnY2tMJJipVMk/Hyw7yPnZ5Bx87nFZiXI+sekyG2rhLPMMkUtbT7eTLRhnAalh1HUdeCU4leYEeGENDMu763m0iwgusMtIsEeeuNBIUXRHT2cfrHen2rKo59nQ5cKWYkrsI3kQQfnfcFocRdOsiqAGDiuldY2bAV+HwAWMYkGxIkEwX4RwjXsRxVnl3k5KWOLk= cyonkee@Coles-MBP.tampabay.rr.com"
+              - name: "tester1"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDneprgdUlIZN5FAAx7yMXjq76Vf+kdorCM1NcOV/FL4ZElER9bPJKVjBZX5TDfEpI8SXpk+mjkCb4PmFpf8RjwEJqcSDAQFYDXo2lC20Bry/xN+WtGaecE9j0aVC0l4Rbg0vLIBhXGBXYGupP97BGGoHMBMdJ4BSbB+BES1Pn6fKyXC2OIZ6m3M45OMgmmSlV9pJ/1zK7eegx6sUG/tdgHqrEGzlOithKVdtDLDbR9PI4B2gKbEsS/OhwYvrjFbcpEjKbphbwVyOtvVIhMPfdifqs9Fq9xPCfN2q2Wc0S87zOpyFln5P/8ECO8Pio8gY+bkPhq1Dw2B1lMDcFTEkbVcqj0GvZDWq3y489zz8XgyfUoxUfSwM6aUeBjnmM1fn5KBwXdYF2asSYxV/oanbHtO9vfhvYl6a6HlfpsApZmdyCMoJXa+oUFNKNnmnxdLPoibmeuoTiJSZFxXmx23c5f0cB/BvKlte8ZTPVCp5GKdLlduwaCFUIOllgcblfEZNU= a628719@LB178305"
+              - name: "tester2"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDQELAO+s+8Mf9rbt95BTRcSqD7MWeqK7b9dR2uO8ksA7aDEKctQSjRb+eNvePWCn8mCPwvNB1MKqyhNxA+1wecaY91+iS3AxlLsjz/+cDKFUhe3ZGb1uyaxzczbNdzU2wio/fXpCtt5ayT9b2opScqEuwV0IZ/B5TpDQ7/HGzPgmjxhw/JRDyifQzCRMlMkj5M5DSF4YcCW4k+JbTzmWin+XDKbXRquSNcalCjGjtg/4TYRd/MWjt81PLTOniBv6bRjPPReUaMB3IoXmRu+nWR5hL/EKD3B+rjzBgNKJ8jBqewiHFS0NamWGs6i0suuomUuhIkoG3yafP0C9z5TQ4v joel.mccandless@fmr.com"
+              - name: "tester7"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCcwka9v1znFRQyC6nJM40VxhprG7fW/ucGXCybKEkRfxL9th4tkBBnMaFUy8zS7vphyZ09mJcR+bqhfmHfNYt2CaBaM3IqK86CJBhmooZuBgN9D1vBnZI13NomzLg7329Z/LMdrcjIh4pOlH6gHtWqKixMAx+p0hmk7wWJGqhPWmJjs+sxLIrZBap0rZubMOD0XNL19qTWZ0hV0mYwEeaSGU8e/p7Yx6BhrD20lvpizUBsJxpchL7CEnRNtIoBiTjYcNja65MvC6y8ZbiXAsf3Gk8qHhjwNdSVC+7b/xI77BMdQi9NI4dQXFzy9xsqSd+e0IkxQhdfXS1RqPmruGQ3 Garrett.VanDerLinden@fmr.com"
+              - name: "tester8"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC9HdhPtoHwdeHa9QgNSL8GaSqzRIomKFopylgVXmnwGNeSS1uXGcmizLdm5goIaFOtW2TTPKvoWBkRAhAmcbmZI5yYYLCiDnEtBovJ6YHIv0VqaW9F1Pvj+akgQC3WwTfFLV/xTzh7XPD5COhk1furDnASqnlmCsgAa0fTn24YANBz/Pcu5S6F4pWaHeq090HTJ02SVVNOGrlS+asR2fkTuZKGL5cr6BAgrJGBKuGh0xzKyR1dpiWScrw7FF/5SVZzZR3As7uHmEc8pr6ex0RkoveY3VP+EdY6nrBR3AY4TgBf6gp2w8gMrjrhQ/tUhwcC8eSlqGtF+qtezOtRQcw5 dmn1\\a627485@INDV096349"
+              - name: "tester9"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCxr+LQwiVvz1ZqYYjkhWFpm4mZmh5DrbqpV6kqF+cmzyTjCs0AVyByfoJNrub3KC0yrN9U8rM85MkUxr/op3RRP599s2wEgYgNYgUiq3cZib7B1LFv29EMPFWbisqR4O2uNP6Vg+gWcIgyyNpwEKV1mJpg9k4HsNE6tKtXOnsqcJVM7hs4QJV1CCRvXSGElqxZPcFJi41I0CRtpPhnGB6koI5Hgi3yh5eRh82HU6JyqhnbtV/CylpssUfDdxM0Vraoeyw7ltRGwgrGGODaxeY9yvkoKsd6+4GQAx9HgIdwOKZXHapWTmgadntPODlEaeOFngkWGjmrFIdU+tU0winF kaleb.mckinnon@fmr.com"
+              - name: "cvivas"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDzy1cxMGEJSuvwt0/FTjhHqxysiXSj9i29dcJicp9TLB/nAH2Re7rfjV0YG9tjT7SBXPWnX4/aDR47VotYfZDPtuyQN3MXgSK9vfd165B0Be0Tl7d0idIciJwISkVjMMSapzXYtgtxITWUbU1r34PriGPnIDyHJYC0dicWjtOc7MWAzi+GQzORtmW2mkYuAngORlZpCq4OzjWGu8mETeX5qAKLaUgbAabG/gDYmMXrhTtdFE2pYJ6V+sd8bMxo3PBjcv9UPhtSh3rSOZOoRAHpe9LlDGf2qw/xhxuCh8nIMcaMvpPxVtqGqj4VJu6KcxMDEC449fSmq16pboHmZ6S6ZJ2H4M5zS5ExnE+5PfYZMoZCdhRrJgtC+0SWaxeN4LGbs0VXUoJhJRo49XUlPjVOKAnNtO+3mkEbJc0ZiPjkAvYa2c+6LDznYIQxwbNbmaW9LUcSmTTVSx22Y66YY7IJzmvTVou16VU+PhDs3Z8ZAV/sIYHBYtshvzkAQuWgzx0= cvivasau@Carloss-MacBook-Pro.local"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.4.0.0/16"
+            public_subnets:
+              - "10.4.0.0/24"
+              - "10.4.1.0/24"
+            private_subnets:
+              - "10.4.2.0/24"
+              - "10.4.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+              # # Dev instance
+              # - "52.57.247.164/32"
+              # - "90.218.123.166/32"
+              # # Dev VPN
+              # - "3.124.141.103/32"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+            subnet_tags:
+              Environment: "uat"
+          eks:
+            instance_type: "t3.xlarge"   # Instance type of EC2 nodes for K8s cluster
+            worker_policies:
+              - "AWSCodeArtifactReadOnlyAccess"
+              - "CloudWatchAgentServerPolicy"
+          bastion:
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Bastions
+          vault:
+            min_size: "1"
+            max_size: "1"
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Vault
+          rds:
+            # Ensure the db_identifier is unique and does not contain special chars as this will be the RDS DBName
+            db_identifier: "uat4backenddb"
+            db_instance_class: "db.r5.large"
+            db_allocated_storage: "50"
+            db_user: "dbadmin"        # Do not use "admin" as the username as it is reserved
+            db_port: "5432"
+            db_backup_retention: "1"
+            #Password is temporarily hardcoded, per Sownak: looking into use of AWS Secrets Manager
+            db_password: "uat4702_Password_t3st"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          # MQ Endpoint Service (below components will be configured in infra as code later, currently using hardcoded due to manual creation)
+          mq:
+            mq_endpoint_service: "com.amazonaws.vpce.us-east-2.vpce-svc-0ef1a08d396a3cc2a"
+          # Codepipeline for BAF
+          pipeline:
+            namespace: "uat4"
+            stage: "pilot"
+            repo: ion-blockchain-automation-framework
+            branch: "uat4"
+            git_username: "UATEnvServiceUser"
+            git_ssh_keyname: "APKA4PUKIGILGVC6JRUQ"
+            buildspec: "automation/buildspec.yml"    # The CENM Env must use automation/buildspec.yml, other Env Must use automation/buildspec_addorg.yml
+            cenm_environment: "uat4-backend"        # meta.name of the cluster were CENM will be deployed
+            codebuild_role: "ION_CodeBuild"
+            codepipeline_role: "ION_CodePipeline"
+            artifact_store: "ion-infrastructure-uat-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "uat-pilot-cross-account-kms-unseal-key"
+
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: uat5-backend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"      # can be "planned", "present", "absent"
+        force_init: "yes"
+        show_plan: false      # can be "true", then it will show the plan in console
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to ion-infrastructure-prereqs for further instructions on how to create the backend
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-uat-remote-state"
+          key: "ion-terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-uat-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "uat"
+          k8:
+            scale_schedule:
+              # must be lower case true for true, only supports "true" or "false"
+              enabled: "false"
+              scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+              scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "40"
+            min_size: "9"
+            desired_size: "9"
+            root_volume_size: "40"
+            cluster_version: "1.16"
+          vault:
+            port: "8200"
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCLbknzuNBh1tlDRmOIz6VA0f2Pu27MTmvw4cJRN1yg6R+rjZxpe6IRDMRJ+q/VLXIHcjNXTBdZAvOPOeCd5oZf/mGHanUEGiWL02ha+WyKwe65++m6OqnG6iCDpJzvSib3uoQZJXVb8Ebu0kxNSadzx66cglUItMjmJw8lMG5u9V9ZfhhU0zyoPGjUPIV/UUL1DuomeeeqQOihtgt000MuLlbz89BPzRBH4aH+7HmitKR0Sf/d24tT8u9FNTtVTW8jdU564qqRmtrki6Y9Kd06YpzoCiZsbhrpXSjYWn9H1B3Z/zMYU2yjm1E7s3B//Ki9Aygp1GcXWrOG2qn5RcGn"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "alpha"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPAlH3z1wFZkzSZF9CNjhaKHmePACz+8psO66O8yx4tlnFdNeko/w91zLqAHVhF0+99R7/9IZhc8d33KJfp0ssxb6799nnpzaGC0h6Es3yJE+x6Sozri/HIsSbOg76kr14a+GNOf+yXeIUHOs7CDd4WqZ3GBtd01sqOrWZegEuDpULU2z91PkTMvfTmaqP7c9DJWmBsuL33RfoDeLp72YKyF8lYv8ygbdLvjqa/2pfOWXtyzGdvw+Rlsi/4ZhTCXqUHP71oo/6fAAiUIXmlTk9roh1wcx/Ro13pmt2JNhiYbNOE8izQ+EAhvmE5W7PQLCg8DD3ZfNnVxkEQ0kab1GgCSJa7tdKB0w1Tvln6iMDIs5mIV+IX8oOrXSEJwGDQkKa35Tb3SW2CwdgFCknU/oZxaeCxNeIa9tGM6zp+3b8T7GssvJcjZukGns6oYdlRLe9ntSemNQ5k9QB7GQIpng+iYUwxSmReaKufwuUho1RofoZTyX6R0L3vS7yfLuvGwfRVDsXZ2/lPyCYjO4R8fgz2vH7c0jOoCx1OJOJbBEMM9cY+WraMAAVAFuuGJB3w8IBefnJCoFaqxHXoajwzPSWFDH3N+uK62MD9sJk0ObmM6kLVP7BU0ZXAY3y2KltWPw1cOZ09iogut02XcTMlIEE52P1a2UIeTA+Vmny92gt7Q== alpha.sall@accenture.com"
+          domain:
+            prefix: "uat5"
+            name: "uat.devx.systems" # main route 53 domain name hosted zone
+          bastion:
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCLbknzuNBh1tlDRmOIz6VA0f2Pu27MTmvw4cJRN1yg6R+rjZxpe6IRDMRJ+q/VLXIHcjNXTBdZAvOPOeCd5oZf/mGHanUEGiWL02ha+WyKwe65++m6OqnG6iCDpJzvSib3uoQZJXVb8Ebu0kxNSadzx66cglUItMjmJw8lMG5u9V9ZfhhU0zyoPGjUPIV/UUL1DuomeeeqQOihtgt000MuLlbz89BPzRBH4aH+7HmitKR0Sf/d24tT8u9FNTtVTW8jdU564qqRmtrki6Y9Kd06YpzoCiZsbhrpXSjYWn9H1B3Z/zMYU2yjm1E7s3B//Ki9Aygp1GcXWrOG2qn5RcGn"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "jeeva"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRG0RVvmeCmUUGDpTmV/TGGMuTVh42T8q045Y/d2IVrt1i/M5oVB4xcviU1td0DF017U6Pr0pyWwGil6A2/sxLJEpLulXFpu3Zs8fFitzWaop7jfVtgdsVwZNKRcjU72IrKolHbCb2/Sp89b7Fl2XVwURfLgyWnyUn/5BgAH6yfH1h6dd7YLaHUtmk1Eu1Ou315HMVD0rn+uRw+GUqY0YMgcVV0hWg5z1wFe0FSlqF99Ea95hFFO2rE0ODAcxg2OqmLN8KXvhLp9ZoDzRn/BEuMBgUD1YfZ6YMS7b387QlYxXiPWgWURhPhApfVFxDOEiGbiaaXIArlyItWNyTLAmBZ1LowWxro+wL3rw/zJeWPmI2SaFfUe0WakFswgYgBIUi82xMQD4s7FnTPRiPDcYb14+waXp1hG3+RmOTugRy+5H79e7se8XFkT2OY68YxZManEfRRxy3lJjCtgThNEX5U+N5u0OX1cMEsx0UfZ5vpvRQ9+MmjVpS3LiQH+bh7eE= jsankarapandian@devx.systems"
+              - name: "mekia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGw7OWMLrhdlrnK5ukijAsQ5NTqbWvQfldmJfaRdmEVZSKme7Km13i9udnchmvL94/eCHJYvNY4LSKtHNdXTYnyV1Vx6+42sCZfYb9Js2+vxaTLWD5h3S+EoW5w+XJ7oUXY/Dxmc0wkFN8er2KD3lbWknAv5m75hB7/qHxHK7ptG5Pk1Q0i4f2q1jtmmKqCYO0m+Mtm/jlUsyhoy1Ndz8KD8Tm9kp/dL6TIaKQU6PHeBS3FpCDo38OLbwIR6qksrux8KcSx1Y/1qf26je7K/hDFL1D3QNCaG9mOXaLUEXpmVX82rIN7AwXlgIOs0IhEetwxF/v4zj4EwmN6+DG9nmnYRaQu04/Axw1A1ymKcUZPJNAJOfbqdkuk2Vvop1KyuEXm/9uZv0O0vuWxPF1m8fsYbDHQrsXhRYpQchj47m3UgA8Jtfd9ryYqYyIef2yGBbkt4loS11Uo9HUeSRULGu4XSD52Chxt6qPVtj6UgO1taXQHsNS3oDsn9zxhC2Txpc= mekiae@Mekias-MacBook-Pro.local"
+              - name: "exactpro"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/a4ieC269CvLzDh3uyL1NdPVr5BqI/7Li9sJnpzt2lnHY8sa+PtkidZEjP1zxSA7tB2zYqLjMm5OcbdU4y5l2LtYsQqsm3y9T1Ypd4wTYRmcBwjF/wX+JivYfkgu0Q776CGV8Yv8Vt+X6DFsETmiHdZHGzpVgNAdN1En3b0sw5jwvskYgIJwFRmqcZbSn6K1qwHx6WmkgArzFRWR4DeWgRjGWnOnYzz5LI3ofNR/+lRm4H+H2qe+ZT9F8L7yi71RQimNJPMuZuYzzncR5u4w6mOyr3hK8piZJFY83ZYiux5PQyigfCm1vdHH6mUQBbsS4izVcwx2LBiz7pGnKTDkGhxWLMFBPfsFA+w0SUNRsxFN0V5aaUbpjBUDWsVdbd8Nxa+1oT1QasjskIydoRXYEpE0EDsUh20ZWSEuCSTcUzM0EeLE94sliMF7HhIWOocE6Pr3OwVNdM39vJlxKSpJpPrbu74H3Uj8yKsNZHqu9GczrZm9x59Hseg+AvqVm0LM= ec2-user@ip-10-2-0-244.us-east-2.compute.internal"
+              - name: "vmahendran"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCcDaDwbiFT0tZIRwKUObtz2V+L48cSkt5VGvDv6FuUb/L1kctftx2WxLzocnLKTqMEAHWyzHgmxRkHCzU5f77fDItQrG8s1oqiaJn24PPqWLh46wSPJvzxRf3fWPF11UpPiBol1OFDHAhmhC/14bHR5gX7kve9cFU7vO9w7gf8fI5wjftbRNO0hoMjynvQrYCAbuwdgDaTP8taCYfWn2KEXW3N1lJmTmam6+34rUVQACucBR+9TTyzKUdbCZ4tXiPkqE6I5QCHjf6H/B5Pjkj26hb8AJGD+dRgzi9XvmoIwkgNCm6YGYdPdC8tQ4ueIqlUDMecMaTQM170HZTVna7GtaPiOTP3dWNeE9B6NgDUqouCtHO2w7s8ja9F9kYoVnxhXl46hmwCNkdgHcx7EoeMnZR0kY9L6x8iCep3EJPhIRrwbKPcY4+/QTNSMk4SNhw9AMcVx7b+csH4ANOhMd/PA/k80HgfsQOkLmrHKLu9d0i4MIeJ4i2sQO2UJUFEiG0= vmahendran@devx.systems"
+              - name: "alpha"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPAlH3z1wFZkzSZF9CNjhaKHmePACz+8psO66O8yx4tlnFdNeko/w91zLqAHVhF0+99R7/9IZhc8d33KJfp0ssxb6799nnpzaGC0h6Es3yJE+x6Sozri/HIsSbOg76kr14a+GNOf+yXeIUHOs7CDd4WqZ3GBtd01sqOrWZegEuDpULU2z91PkTMvfTmaqP7c9DJWmBsuL33RfoDeLp72YKyF8lYv8ygbdLvjqa/2pfOWXtyzGdvw+Rlsi/4ZhTCXqUHP71oo/6fAAiUIXmlTk9roh1wcx/Ro13pmt2JNhiYbNOE8izQ+EAhvmE5W7PQLCg8DD3ZfNnVxkEQ0kab1GgCSJa7tdKB0w1Tvln6iMDIs5mIV+IX8oOrXSEJwGDQkKa35Tb3SW2CwdgFCknU/oZxaeCxNeIa9tGM6zp+3b8T7GssvJcjZukGns6oYdlRLe9ntSemNQ5k9QB7GQIpng+iYUwxSmReaKufwuUho1RofoZTyX6R0L3vS7yfLuvGwfRVDsXZ2/lPyCYjO4R8fgz2vH7c0jOoCx1OJOJbBEMM9cY+WraMAAVAFuuGJB3w8IBefnJCoFaqxHXoajwzPSWFDH3N+uK62MD9sJk0ObmM6kLVP7BU0ZXAY3y2KltWPw1cOZ09iogut02XcTMlIEE52P1a2UIeTA+Vmny92gt7Q== alpha.sall@accenture.com"
+              - name: "salwala"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDhfsGW+i/488fSiMW2DVZiS5l3cew2lX13aQMKUaH9e23zXvNShuDkkHZk0e3tHiZB9oqjsY5qn6Mk9gM7QRhvIesTnK5G1VbCStQjKNtpDGce9bCwb2GtKORuIkIoqKwP7aCm74sP7dM7ITon2qOR3wV+tO03GJjrQySY0KJcavHE56dL34Pp73idF9AapqGrTeTryIJ3QpioXNQ1s7jLgpVzmw3MSJ5R/h0C+zkEWlHRfll35bv+fSuG+76YBc1Xn//mYhjGNYiBqlCyEmIPfoIHQjxCBtjksLVwB8uQ6vpOAlWawrBl4eoUMfPXgITLWQx8RjB8Q2SG0QTnEPykAfKwY2HfBntbbs0pdMA3KEG+Te0eYSh9D9lwzX3T+RR926UWXKc2n0irJ52ys5hkA7mox/xotQ6BTV4VfgsKZiuwbaa1SzJyyjZJbOK5sSThH+Qp/bDRbDkqtvHIBt81NMzDDEXqSCXpbJLOSJVe6rNE0OxhqdnSmWvWh5Dv2gs= Seshu@ADMINIS-SP81DRQ"
+              - name: "cyonkee"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDBko8p79sZOGNHAj6qoKa0po5natoucVSGO2C23NQ4KNyYz7JM2ZKs3o6XccFlO1UBsVbFx09vCUr+u/r6wcycapj+NLLGlOiXuidD2xLrtAvghwgwgJYbjcgyoxLTmjjQxgRotfUL0M50OK7PhQ9myZgHf4vHe2HaECXqV1tPIY2laGRyDLMzIqa4VIz8yUo+DT9rqqChePbG/gtXCxQbVQpZH2sKxjEz/sbe/vjGRgETiDbrAJxMDIHMDdNiKN7qO8Ch2gRKxX+ZXFgv6SLrVQOhnC/kQRzM54YwTsb5fr8O6InCJBvOc8f6l+jsIrnY2tMJJipVMk/Hyw7yPnZ5Bx87nFZiXI+sekyG2rhLPMMkUtbT7eTLRhnAalh1HUdeCU4leYEeGENDMu763m0iwgusMtIsEeeuNBIUXRHT2cfrHen2rKo59nQ5cKWYkrsI3kQQfnfcFocRdOsiqAGDiuldY2bAV+HwAWMYkGxIkEwX4RwjXsRxVnl3k5KWOLk= cyonkee@Coles-MBP.tampabay.rr.com"
+              - name: "cvivas"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDzy1cxMGEJSuvwt0/FTjhHqxysiXSj9i29dcJicp9TLB/nAH2Re7rfjV0YG9tjT7SBXPWnX4/aDR47VotYfZDPtuyQN3MXgSK9vfd165B0Be0Tl7d0idIciJwISkVjMMSapzXYtgtxITWUbU1r34PriGPnIDyHJYC0dicWjtOc7MWAzi+GQzORtmW2mkYuAngORlZpCq4OzjWGu8mETeX5qAKLaUgbAabG/gDYmMXrhTtdFE2pYJ6V+sd8bMxo3PBjcv9UPhtSh3rSOZOoRAHpe9LlDGf2qw/xhxuCh8nIMcaMvpPxVtqGqj4VJu6KcxMDEC449fSmq16pboHmZ6S6ZJ2H4M5zS5ExnE+5PfYZMoZCdhRrJgtC+0SWaxeN4LGbs0VXUoJhJRo49XUlPjVOKAnNtO+3mkEbJc0ZiPjkAvYa2c+6LDznYIQxwbNbmaW9LUcSmTTVSx22Y66YY7IJzmvTVou16VU+PhDs3Z8ZAV/sIYHBYtshvzkAQuWgzx0= cvivasau@Carloss-MacBook-Pro.local"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.5.0.0/16"
+            public_subnets:
+              - "10.5.0.0/24"
+              - "10.5.1.0/24"
+            private_subnets:
+              - "10.5.2.0/24"
+              - "10.5.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+              # # Dev instance
+              # - "52.57.247.164/32"
+              # - "90.218.123.166/32"
+              # # Dev VPN
+              # - "3.124.141.103/32"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+            subnet_tags:
+              Environment: "uat"
+          eks:
+            instance_type: "t3.xlarge"   # Instance type of EC2 nodes for K8s cluster
+            worker_policies:
+              - "AWSCodeArtifactReadOnlyAccess"
+              - "CloudWatchAgentServerPolicy"
+          bastion:
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Bastions
+          vault:
+            min_size: "1"
+            max_size: "1"
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Vault
+          rds:
+            # Ensure the db_identifier is unique and does not contain special chars as this will be the RDS DBName
+            db_identifier: "uat5backenddb"
+            db_instance_class: "db.r5.large"
+            db_allocated_storage: "50"
+            db_user: "dbadmin"        # Do not use "admin" as the username as it is reserved
+            db_port: "5432"
+            db_backup_retention: "1"
+            #Password is temporarily hardcoded, per Sownak: looking into use of AWS Secrets Manager
+            db_password: "uat5967_Password_t3st"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          # MQ Endpoint Service (below components will be configured in infra as code later, currently using hardcoded due to manual creation)
+          mq:
+            mq_endpoint_service: "com.amazonaws.vpce.us-east-2.vpce-svc-0ef1a08d396a3cc2a"
+          # Codepipeline for BAF
+          pipeline:
+            namespace: "uat5"
+            stage: "pilot"
+            repo: ion-blockchain-automation-framework
+            branch: "uat5"
+            git_username: "UATEnvServiceUser"
+            git_ssh_keyname: "APKA4PUKIGILGVC6JRUQ"
+            buildspec: "automation/buildspec.yml"    # The CENM Env must use automation/buildspec.yml, other Env Must use automation/buildspec_addorg.yml
+            cenm_environment: "uat5-backend"        # meta.name of the cluster were CENM will be deployed
+            codebuild_role: "ION_CodeBuild"
+            codepipeline_role: "ION_CodePipeline"
+            artifact_store: "ion-infrastructure-uat-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "uat-pilot-cross-account-kms-unseal-key"

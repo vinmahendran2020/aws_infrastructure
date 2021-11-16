@@ -1,0 +1,73 @@
+pipeline {
+    agent {
+      dockerfile {
+        filename 'Dockerfile.ci'
+        dir ''
+        label 'docker-large'
+      }
+    }
+
+    options {
+      buildDiscarder(logRotator(numToKeepStr: '7', daysToKeepStr: '7'))
+      disableConcurrentBuilds()
+    }
+
+    environment {
+      // trust known_hosts
+      GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=no"
+    }
+
+    parameters {
+      string(defaultValue: '', name: 'ENV_TO_DESTROY', description: 'Name of the environment you want to destroy (ex: test)')
+      choice(choices: ['eu-west-1'], name: 'AWS_REGION', description: 'Which AWS region?')
+    }
+
+    stages {
+      stage('Terraform Plan Destroy') {
+        steps {
+          withCredentials([[
+              $class: 'AmazonWebServicesCredentialsBinding',
+              credentialsId: 'terraform_user',
+              accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+              secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+          ]]) {
+            sshagent(['innersource_service_user']) {
+              sh '''
+              export TF_VAR_aws_access_key=$AWS_ACCESS_KEY_ID
+              export TF_VAR_aws_secret_key=$AWS_SECRET_ACCESS_KEY
+
+              terraform plan -destroy
+              '''
+            }
+          }
+        }
+      }
+
+      stage('Manual Approval for Destroy') {
+        steps {
+          input 'Are you sure you want to destroy?'
+        }
+      }
+
+      stage('Terraform Destroy') {
+        steps {
+          withCredentials([[
+              $class: 'AmazonWebServicesCredentialsBinding',
+              credentialsId: 'terraform_user',
+              accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+              secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+          ]]) {
+            sshagent(['innersource_service_user']) {
+              sh '''
+              export TF_VAR_aws_access_key=$AWS_ACCESS_KEY_ID
+              export TF_VAR_aws_secret_key=$AWS_SECRET_ACCESS_KEY
+
+              terraform destroy -no-color -input=false -auto-approve
+              '''
+            }
+          }
+        }
+      }
+
+    }
+}

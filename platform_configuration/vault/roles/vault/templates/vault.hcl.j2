@@ -1,0 +1,15 @@
+storage "s3" {
+## Here, inside quotes, introduce the access_key of the bucket
+  access_key = "{{lookup('env','AWS_ACCESS_KEY_ID')}}"
+## Here, inside quotes, introduce the secret_key of the bucket
+  secret_key = "{{lookup('env','AWS_SECRET_ACCESS_KEY')}}"
+## Here, inside quotes, introduce the name of the bucket
+  bucket = "{{lookup('env','VAULT_BUCKET')}}"
+## Here, inside quotes, introduce the region of the bucket
+  region = "{{lookup('env','AWS_DEFAULT_REGION')}}"
+}
+
+listener "tcp" {
+  address = "0.0.0.0:8200"
+  tls_disable = 1
+} 

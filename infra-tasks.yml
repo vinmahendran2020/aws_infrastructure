@@ -1,0 +1,40 @@
+---
+# Create a VPC with EKS cluster, bastion, and vault for each organization specified in the configuration
+
+- name: "Generate Variable File for Terraform to consume"
+  template:
+    src: "terraform_tfvars_{{ org_i.infrastructure.cloud_provider }}.tpl"
+    dest: "{{ playbook_dir }}/infrastructure/{{ org_i.infrastructure.cloud_provider }}/generated-vars.tfvars"
+  check_mode: no
+
+- name: "Generate cloud-init File for Terraform for consume (Bastion)"
+  template:
+    src: "cloud_init.tpl"
+    dest: "{{ playbook_dir }}/infrastructure/{{ org_i.infrastructure.cloud_provider }}/cloud_init_bastion.yml"
+  vars:
+    users: "{{ org_i.infrastructure.general.bastion.users }}"
+  check_mode: no
+  when: "org_i.infrastructure.cloud_provider|string != 'aws-frontend'"
+
+- name: "Generate cloud-init File for Terraform for consume (Vault)"
+  template:
+    src: "cloud_init.tpl"
+    dest: "{{ playbook_dir }}/infrastructure/{{ org_i.infrastructure.cloud_provider }}/cloud_init_vault.yml"
+  vars:
+    users: "{{ org_i.infrastructure.general.vault.users }}"
+  check_mode: no
+  when: "org_i.infrastructure.cloud_provider|string != 'aws-frontend'"
+
+- name: "Deploy Terraform"
+  include_role:
+    name: deploy-infra
+  vars:
+    # For generation of tfvars file
+    variables_file: "{{ playbook_dir }}/infrastructure/{{ org_i.infrastructure.cloud_provider }}/generated-vars.tfvars"
+    # For Ansible Terraform module in deploy-infra
+    project_path: "{{ playbook_dir }}/infrastructure/{{ org_i.infrastructure.cloud_provider }}"
+    state: "{{ org_i.workflow.state }}"
+    force_init: "{{ org_i.workflow.force_init }}"
+    show_plan: "{{ org_i.workflow.show_plan }}"
+    workspace: "{{ org_i.meta.name }}"
+    backend_config: "{{ org_i.backend.config | default(omit) }}"

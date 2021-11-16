@@ -1,0 +1,54 @@
+version: 0.2
+env:
+  variables:
+    TERRAFORM_VERSION: "0.12.15"
+    PACKER_VERSION: "1.6.4"
+  parameter-store:
+    TF_VAR_aws_access_key: DEV_ACCESS_KEY
+    TF_VAR_aws_secret_key: DEV_SECRET_KEY
+phases:
+  install:
+    runtime-versions:
+      python: 3.7
+    commands:
+      - git config --global credential.helper '!aws codecommit credential-helper $@'
+      - git config --global credential.UseHttpPath true
+      - wget https://releases.hashicorp.com/terraform/"$TERRAFORM_VERSION"/terraform_"$TERRAFORM_VERSION"_linux_amd64.zip
+      - unzip terraform_"$TERRAFORM_VERSION"_linux_amd64.zip
+      - mv terraform /usr/local/bin/
+      - terraform --version
+      - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+      - apt-get update -y
+      - apt-add-repository --yes --update ppa:ansible/ansible
+      - apt-get install -y ansible
+      - ansible --version
+  pre_build:
+    commands:
+      - build_name=$(echo $CODEBUILD_BUILD_ID | cut -d':' -f1)
+      - build_id=$(echo $CODEBUILD_BUILD_ID | cut -d':' -f2)
+      - link=$(echo "https://$AWS_DEFAULT_REGION.console.aws.amazon.com/codesuite/codebuild/projects/$build_name/build/$build_name%3A$build_id")
+      - aws codecommit post-comment-for-pull-request --pull-request-id $PULL_REQUEST_ID --repository-name $REPOSITORY_NAME --before-commit-id $DESTINATION_COMMIT --after-commit-id $SOURCE_COMMIT --content "Codebuild link $link"
+      - git checkout $SOURCE_COMMIT
+  build:
+    commands:
+      - export ANSIBLE_STDOUT_CALLBACK="yaml"
+      # initialize result status
+      - result=FAILURE
+      - terraform fmt -list -check -diff infrastructure/aws
+      - terraform fmt -list -check -diff infrastructure/aws-frontend
+      - ansible-playbook site.yml -vv --inventory-file=inventory/ --extra-vars "@./network_backend.yml" --extra-vars "plan=true"
+      - ansible-playbook site.yml -vv --inventory-file=inventory/ --extra-vars "@./network_frontend.yml" --extra-vars "plan=true"
+      # set result as success
+      - result=SUCCESS
+  post_build:
+    commands:
+      - |
+        if [ $result = "SUCCESS" ]; then
+          content=$(echo "Build Succesful");
+          aws codecommit update-pull-request-approval-state --pull-request-id $PULL_REQUEST_ID --approval-state APPROVE --revision-id $REVISION_ID;
+        elif [ $result = "FAILURE" ]; then
+          content=$(echo "Build Failed. Please review build logs");
+        else
+          content="An unexpected error occurred while building application";
+        fi
+      - aws codecommit post-comment-for-pull-request --pull-request-id $PULL_REQUEST_ID --repository-name $REPOSITORY_NAME --before-commit-id $DESTINATION_COMMIT --after-commit-id $SOURCE_COMMIT --content "$content"

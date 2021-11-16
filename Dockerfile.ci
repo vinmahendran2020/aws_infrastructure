@@ -1,0 +1,118 @@
+FROM alpine:3.10.2 as stage_one
+
+ENV TERRAFORM_VERSION=0.12.15
+ENV KUBECTL_VERSION=v1.15.0
+
+ENV AWS_CLI_VERSION=TO_BE_DECIDED
+ENV AZURE_CLI_VERSION=TO_BE_DECIDED
+ENV GCP_CLI_VERSION=TO_BE_DECIDED
+
+WORKDIR  /var/tmp
+
+# ============ Updating Packages & Installing Dependencies ============ #
+RUN  apk add --update  --no-cache && apk add --upgrade --no-cache \
+ &&  apk add --no-cache curl make gcc g++ linux-headers binutils-gold gnupg libstdc++ \
+ &&  apk add --no-cache ca-certificates=20191127-r2
+
+RUN apk add --update git bash openssh tar \
+    && apk add --virtual=build gcc libffi-dev musl-dev openssl-dev coreutils curl linux-headers
+
+# Install Terraform
+RUN curl --output terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
+      https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
+    && curl --output terraform_${TERRAFORM_VERSION}_SHA256SUMS \ 
+      https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_SHA256SUMS \
+    # ignore missing ignores missing files in the sha256sum file
+    && sha256sum --check --status --ignore-missing terraform_${TERRAFORM_VERSION}_SHA256SUMS \
+    && unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip -d /bin \
+    # cleanup
+    && rm -f terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+
+# Install Kubectl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
+    && chmod +x ./kubectl \
+    && mv ./kubectl /bin/kubectl
+
+# Install aws-iam-authenticator
+RUN curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.14.6/2019-08-22/bin/linux/amd64/aws-iam-authenticator \
+    && chmod +x ./aws-iam-authenticator \
+    && cp ./aws-iam-authenticator /bin/aws-iam-authenticator && export PATH=/bin:$PATH
+
+#  Determining Master Base Images For One Shot Agents | Docker 19.03.02 Docker In Docker | Last Stage  #
+# ======== !Note! It is highly recommended to use Alpine as a base image for one shot agents ======== #
+FROM docker:19.03.2-dind
+
+# ============ Defining Jenkins Values  Configuring Docker ============ #
+ARG  JNUSER=jenkins
+ARG  JNGRUP=jenkins
+ARG  JNSUID=1000
+ARG  JNSGID=1000
+ARG  JNSHOM=/home/${JNUSER}
+ARG  SYSTEM_LANG=C.UTF-8 
+
+ENV ANSIBLE_VERSION=2.8.6
+ENV  DOCKER_CACHE=/docker-cache
+ENV  DOCKER_STRGE=true
+ENV  JAVA_HOME=/usr/lib/jvm/java-1.8-openjdk
+ENV  PATH=${PATH}:/usr/local/bin:/usr/lib/jvm/java-1.8-openjdk/jre/bin:/usr/lib/jvm/java-1.8-openjdk/bin 
+
+# ============ Updating Packages & Installing Dependencies ============ #
+# ======== Java 8 is required to successfully run One Shot Agents ======== #
+RUN  apk add --update  --no-cache \
+  && apk add --no-cache openjdk8-jre bash curl git tini ca-certificates
+# ===================================================================== #
+
+# === Determine Alpine Extra Packages & Dependencies For User Needs === #
+#                                                                       #
+#         User Desired Applications And Packages Should Be Here         #
+#                                                                       #
+# ===================================================================== #
+ 
+
+# ===================== Creating Groups And Users ===================== #
+RUN addgroup --gid "$JNSGID" "$JNUSER" \
+ && adduser  -h    "${JNSHOM}" \
+             -u    "${JNSUID}" \
+             -G    "${JNGRUP}" \
+             -s    /bin/bash   \
+             -D    "${JNUSER}" \
+ && echo "${JNUSER}:${JNUSER}" | chpasswd \
+ && addgroup docker && addgroup ${JNUSER} docker && addgroup ${JNUSER} dockremap 
+
+# ========= Getting [Desired] Package Versions From Stage One ========= #
+COPY --from=stage_one /bin/kubectl /usr/local/bin/
+COPY --from=stage_one /bin/aws-iam-authenticator /usr/local/bin/
+COPY --from=stage_one /bin/terraform /usr/local/bin/
+# == !Optional! The Documentation And Manuals For Your Compiled Data == #
+#                                                                       #
+# ===================================================================== #
+# ===================================================================== #
+# ==== Determine Your Extra Packages & Dependencies For User Needs ==== #
+#                                                                       #
+#         User Desired Applications And Packages Should Be Here         #
+#                                                                       #
+# ===================================================================== # 
+# Base utilities
+# Python commands adapted from https://github.com/frol/docker-alpine-python3/blob/master/Dockerfile
+RUN apk add --update git bash openssh tar \
+    && apk add --virtual=build gcc libffi-dev musl-dev openssl-dev coreutils curl linux-headers \
+    && apk add --no-cache python3-dev && \
+      if [ ! -e /usr/bin/python ]; then ln -sf python3 /usr/bin/python ; fi && \
+      python3 -m ensurepip && \
+      rm -r /usr/lib/python*/ensurepip && \
+      pip3 install --no-cache --upgrade pip setuptools wheel && \
+      if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip ; fi
+
+# Install Ansible
+RUN pip3 install ansible==${ANSIBLE_VERSION} --upgrade
+
+# Install AWS CLI
+RUN pip3 install awscli --upgrade
+
+# =================== Welder Scripts For Entrypoint =================== #
+COPY Weld.bash /usr/local/bin/entrypoint.bash
+VOLUME   ${JNSHOM} /docker-cache /tmp
+WORKDIR  ${JNSHOM}
+
+# = Entrypoint is constant and should not be changed in any case = #
+ENTRYPOINT ["/sbin/tini","-g","--","bash","/usr/local/bin/entrypoint.bash"]

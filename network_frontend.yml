@@ -1,0 +1,591 @@
+# This file holds all the configuration values for the cluster(s) for the blockchain network
+# It supports multiple clouds, under the respective cloud provider's sections (aws/azure/gcp/etc.)
+network:
+  # Allows specification of one or many organizations that will be connecting to a network.
+  # If an organization is also hosting the root of the network (e.g. doorman, membership service, etc),
+  # then these services should be listed in this section as well.
+  organizations:
+    # NOTE - access key variable has been removed in favour of using environment variables
+    # Please consult Terraform documentation on what it expects (e.g. AWS https://www.terraform.io/docs/providers/aws/index.html)
+    # e.g. for AWS, it expects AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY
+                  
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: uat1-frontend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"
+        force_init: "yes"
+        show_plan: false
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to fulcrum-infrastructure-backend for further instructions on how to create the backend
+
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-uat-remote-state"
+          key: "terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-uat-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws-frontend" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "uat"
+          dns:
+            dns_name: "uat1.uat.devx.systems"
+            dns_name_prefix: "*"
+          k8s:
+            # scale_schedule:
+            #   # must be lower case true for true, only supports "true" or "false"
+            #   enabled: "true"
+            #   scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+            #   scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "4"
+            min_size: "2"
+            desired_size: "2"
+            root_volume_size: "20"
+            cluster_version: "1.16"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.0.0.0/16"
+            public_subnets:
+              - "10.0.0.0/24"
+              - "10.0.1.0/24"
+            private_subnets:
+              - "10.0.2.0/24"
+              - "10.0.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+          eks:
+            instance_type: "t3.large"
+            worker_policies:
+              - "CloudWatchLogsFullAccess"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          cognito:
+            user_groups:
+              DTCCOperator:
+                description: "DTCC Operator users"
+                precedence: 10
+              ParticipantBank:
+                description: "Member bank users of the Ion network"
+                precedence: 20
+            identity_pool:
+              env: "uat1"
+          elasticache:
+            node_type: "cache.t3.small"
+            read_replicas: 2  # maximum 5 read replicas
+            snapshot_retention_days: 5
+          pipelines:
+            namespace: "uat1"
+            stage: "pilot"
+            pipelines_run_build: "false" # This should be false for higher environments as the images should only be built in DEV
+            codebuild_iam_role: "ION_CodeBuild"
+            codepipeline_iam_role: "ION_CodePipeline"
+            codepipeline_artifact_bucket_name: "ion-infrastructure-uat-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "uat-pilot-cross-account-kms-unseal-key"  # KMS Key alias created for the environment
+            registry_url: "858209661462.dkr.ecr.us-east-2.amazonaws.com"
+            image_tag: "0.13.9"
+            frontend:
+              repo_name: "ion-frontend"
+              ecr_repo_name: "ion-dev-frontend"
+              branch_name: "uat"
+              eks_cluster: "uat1-frontend-CLUSTER"
+              build_spec_name: "buildspec_build.yml"
+              deploy_spec_name: "buildspec_deploy.yml"
+              verify_spec_name: "buildspec_verify.yml"
+            frontend_service:
+              repo_name: "ion-frontend-service"
+              ecr_repo_name: "ion-dev-frontend-service"
+              branch_name: "uat"
+              eks_cluster: "uat1-frontend-CLUSTER"
+              build_spec_name: "buildspec-build.yml"
+              deploy_spec_name: "buildspec-deploy.yml"
+              verify_spec_name: "buildspec-verify.yml"
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: uat2-frontend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"
+        force_init: "yes"
+        show_plan: false
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to fulcrum-infrastructure-backend for further instructions on how to create the backend
+
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-uat-remote-state"
+          key: "terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-uat-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws-frontend" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "uat"
+          dns:
+            dns_name: "uat2.uat.devx.systems"
+            dns_name_prefix: "*"
+          k8s:
+            # scale_schedule:
+            #   # must be lower case true for true, only supports "true" or "false"
+            #   enabled: "true"
+            #   scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+            #   scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "4"
+            min_size: "3"
+            desired_size: "3"
+            root_volume_size: "20"
+            cluster_version: "1.16"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.1.0.0/16"
+            public_subnets:
+              - "10.1.0.0/24"
+              - "10.1.1.0/24"
+            private_subnets:
+              - "10.1.2.0/24"
+              - "10.1.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+          eks:
+            instance_type: "t3.large"
+            worker_policies:
+              - "CloudWatchLogsFullAccess"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          cognito:
+            user_groups:
+              DTCCOperator:
+                description: "DTCC Operator users"
+                precedence: 10
+              ParticipantBank:
+                description: "Member bank users of the Ion network"
+                precedence: 20
+            identity_pool:
+              env: "uat2"
+          elasticache:
+            node_type: "cache.t3.small"
+            read_replicas: 2  # maximum 5 read replicas
+            snapshot_retention_days: 5
+          pipelines:
+            namespace: "uat2"
+            stage: "pilot"
+            pipelines_run_build: "false" # This should be false for higher environments as the images should only be built in DEV
+            codebuild_iam_role: "ION_CodeBuild"
+            codepipeline_iam_role: "ION_CodePipeline"
+            codepipeline_artifact_bucket_name: "ion-infrastructure-uat-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "uat-pilot-cross-account-kms-unseal-key"  # KMS Key alias created for the environment
+            registry_url: "858209661462.dkr.ecr.us-east-2.amazonaws.com"
+            image_tag: "0.13.17"
+            frontend:
+              repo_name: "ion-frontend"
+              ecr_repo_name: "ion-dev-frontend"
+              branch_name: "uat"
+              eks_cluster: "uat2-frontend-CLUSTER"
+              build_spec_name: "buildspec_build.yml"
+              deploy_spec_name: "buildspec_deploy.yml"
+              verify_spec_name: "buildspec_verify.yml"
+            frontend_service:
+              repo_name: "ion-frontend-service"
+              ecr_repo_name: "ion-dev-frontend-service"
+              branch_name: "uat"
+              eks_cluster: "uat2-frontend-CLUSTER"
+              build_spec_name: "buildspec-build.yml"
+              deploy_spec_name: "buildspec-deploy.yml"
+              verify_spec_name: "buildspec-verify.yml"
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: uat3-frontend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"
+        force_init: "yes"
+        show_plan: false
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to fulcrum-infrastructure-backend for further instructions on how to create the backend
+
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-uat-remote-state"
+          key: "terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-uat-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws-frontend" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "uat"
+          dns:
+            dns_name: "uat3.uat.devx.systems"
+            dns_name_prefix: "*"
+          k8s:
+            # scale_schedule:
+            #   # must be lower case true for true, only supports "true" or "false"
+            #   enabled: "true"
+            #   scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+            #   scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "4"
+            min_size: "3"
+            desired_size: "3"
+            root_volume_size: "20"
+            cluster_version: "1.16"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.2.0.0/16"
+            public_subnets:
+              - "10.2.0.0/24"
+              - "10.2.1.0/24"
+            private_subnets:
+              - "10.2.2.0/24"
+              - "10.2.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+          eks:
+            instance_type: "t3.large"
+            worker_policies:
+              - "CloudWatchLogsFullAccess"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          cognito:
+            user_groups:
+              DTCCOperator:
+                description: "DTCC Operator users"
+                precedence: 10
+              ParticipantBank:
+                description: "Member bank users of the Ion network"
+                precedence: 20
+            identity_pool:
+              env: "uat3"
+          elasticache:
+            node_type: "cache.t3.small"
+            read_replicas: 2  # maximum 5 read replicas
+            snapshot_retention_days: 5
+          pipelines:
+            namespace: "uat3"
+            stage: "pilot"
+            pipelines_run_build: "false" # This should be false for higher environments as the images should only be built in DEV
+            codebuild_iam_role: "ION_CodeBuild"
+            codepipeline_iam_role: "ION_CodePipeline"
+            codepipeline_artifact_bucket_name: "ion-infrastructure-uat-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "uat-pilot-cross-account-kms-unseal-key"  # KMS Key alias created for the environment
+            registry_url: "858209661462.dkr.ecr.us-east-2.amazonaws.com"
+            image_tag: "0.13.17"
+            frontend:
+              repo_name: "ion-frontend"
+              ecr_repo_name: "ion-dev-frontend"
+              branch_name: "uat"
+              eks_cluster: "uat3-frontend-CLUSTER"
+              build_spec_name: "buildspec_build.yml"
+              deploy_spec_name: "buildspec_deploy.yml"
+              verify_spec_name: "buildspec_verify.yml"
+            frontend_service:
+              repo_name: "ion-frontend-service"
+              ecr_repo_name: "ion-dev-frontend-service"
+              branch_name: "uat"
+              eks_cluster: "uat3-frontend-CLUSTER"
+              build_spec_name: "buildspec-build.yml"
+              deploy_spec_name: "buildspec-deploy.yml"
+              verify_spec_name: "buildspec-verify.yml"
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: uat4-frontend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"
+        force_init: "yes"
+        show_plan: false
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to fulcrum-infrastructure-backend for further instructions on how to create the backend
+
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-uat-remote-state"
+          key: "terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-uat-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws-frontend" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "uat"
+          dns:
+            dns_name: "uat4.uat.devx.systems"
+            dns_name_prefix: "*"
+          k8s:
+            # scale_schedule:
+            #   # must be lower case true for true, only supports "true" or "false"
+            #   enabled: "true"
+            #   scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+            #   scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "4"
+            min_size: "3"
+            desired_size: "3"
+            root_volume_size: "20"
+            cluster_version: "1.16"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.3.0.0/16"
+            public_subnets:
+              - "10.3.0.0/24"
+              - "10.3.1.0/24"
+            private_subnets:
+              - "10.3.2.0/24"
+              - "10.3.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+          eks:
+            instance_type: "t3.large"
+            worker_policies:
+              - "CloudWatchLogsFullAccess"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          cognito:
+            user_groups:
+              DTCCOperator:
+                description: "DTCC Operator users"
+                precedence: 10
+              ParticipantBank:
+                description: "Member bank users of the Ion network"
+                precedence: 20
+            identity_pool:
+              env: "uat4"
+          elasticache:
+            node_type: "cache.t3.small"
+            read_replicas: 2  # maximum 5 read replicas
+            snapshot_retention_days: 5
+          pipelines:
+            namespace: "uat4"
+            stage: "pilot"
+            pipelines_run_build: "false" # This should be false for higher environments as the images should only be built in DEV
+            codebuild_iam_role: "ION_CodeBuild"
+            codepipeline_iam_role: "ION_CodePipeline"
+            codepipeline_artifact_bucket_name: "ion-infrastructure-uat-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "uat-pilot-cross-account-kms-unseal-key"  # KMS Key alias created for the environment
+            registry_url: "858209661462.dkr.ecr.us-east-2.amazonaws.com"
+            image_tag: "0.13.17"
+            frontend:
+              repo_name: "ion-frontend"
+              ecr_repo_name: "ion-dev-frontend"
+              branch_name: "uat"
+              eks_cluster: "uat4-frontend-CLUSTER"
+              build_spec_name: "buildspec_build.yml"
+              deploy_spec_name: "buildspec_deploy.yml"
+              verify_spec_name: "buildspec_verify.yml"
+            frontend_service:
+              repo_name: "ion-frontend-service"
+              ecr_repo_name: "ion-dev-frontend-service"
+              branch_name: "uat"
+              eks_cluster: "uat4-frontend-CLUSTER"
+              build_spec_name: "buildspec-build.yml"
+              deploy_spec_name: "buildspec-deploy.yml"
+              verify_spec_name: "buildspec-verify.yml"
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: uat5-frontend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"
+        force_init: "yes"
+        show_plan: false
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to fulcrum-infrastructure-backend for further instructions on how to create the backend
+
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-uat-remote-state"
+          key: "terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-uat-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws-frontend" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "uat"
+          dns:
+            dns_name: "uat5.uat.devx.systems"
+            dns_name_prefix: "*"
+          k8s:
+            # scale_schedule:
+            #   # must be lower case true for true, only supports "true" or "false"
+            #   enabled: "true"
+            #   scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+            #   scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "4"
+            min_size: "3"
+            desired_size: "3"
+            root_volume_size: "20"
+            cluster_version: "1.16"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.4.0.0/16"
+            public_subnets:
+              - "10.4.0.0/24"
+              - "10.4.1.0/24"
+            private_subnets:
+              - "10.4.2.0/24"
+              - "10.4.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+          eks:
+            instance_type: "t3.large"
+            worker_policies:
+              - "CloudWatchLogsFullAccess"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          cognito:
+            user_groups:
+              DTCCOperator:
+                description: "DTCC Operator users"
+                precedence: 10
+              ParticipantBank:
+                description: "Member bank users of the Ion network"
+                precedence: 20
+            identity_pool:
+              env: "uat5"
+          elasticache:
+            node_type: "cache.t3.small"
+            read_replicas: 2  # maximum 5 read replicas
+            snapshot_retention_days: 5
+          pipelines:
+            namespace: "uat5"
+            stage: "pilot"
+            pipelines_run_build: "false" # This should be false for higher environments as the images should only be built in DEV
+            codebuild_iam_role: "ION_CodeBuild"
+            codepipeline_iam_role: "ION_CodePipeline"
+            codepipeline_artifact_bucket_name: "ion-infrastructure-uat-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "uat-pilot-cross-account-kms-unseal-key"  # KMS Key alias created for the environment
+            registry_url: "858209661462.dkr.ecr.us-east-2.amazonaws.com"
+            image_tag: "0.13.17"
+            frontend:
+              repo_name: "ion-frontend"
+              ecr_repo_name: "ion-dev-frontend"
+              branch_name: "uat"
+              eks_cluster: "uat5-frontend-CLUSTER"
+              build_spec_name: "buildspec_build.yml"
+              deploy_spec_name: "buildspec_deploy.yml"
+              verify_spec_name: "buildspec_verify.yml"
+            frontend_service:
+              repo_name: "ion-frontend-service"
+              ecr_repo_name: "ion-dev-frontend-service"
+              branch_name: "uat"
+              eks_cluster: "uat5-frontend-CLUSTER"
+              build_spec_name: "buildspec-build.yml"
+              deploy_spec_name: "buildspec-deploy.yml"
+              verify_spec_name: "buildspec-verify.yml"

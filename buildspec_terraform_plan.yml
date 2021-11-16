@@ -1,0 +1,41 @@
+version: 0.2
+env:
+  variables:
+    TERRAFORM_VERSION: "0.12.15"
+    CROSS_ACCOUNT_ROLE: "arn:aws:iam::858209661462:role/Cross_Account_CICD"
+    STACK: "backend"
+  parameter-store:
+    TF_VAR_aws_access_key: DEV_ACCESS_KEY
+    TF_VAR_aws_secret_key: DEV_SECRET_KEY
+phases:
+  install:
+    runtime-versions:
+      python: 3.7
+    commands:
+      - wget https://releases.hashicorp.com/terraform/"$TERRAFORM_VERSION"/terraform_"$TERRAFORM_VERSION"_linux_amd64.zip
+      - unzip terraform_"$TERRAFORM_VERSION"_linux_amd64.zip
+      - mv terraform /usr/local/bin/
+      - terraform --version
+      - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+      - apt-get update -y
+      - apt-add-repository --yes --update ppa:ansible/ansible
+      - apt-get install -y ansible
+      - ansible --version
+  build:
+    commands:
+      - export ANSIBLE_STDOUT_CALLBACK="yaml"
+      - creds=$(aws sts assume-role --role-arn $CROSS_ACCOUNT_ROLE --role-session-name CodeRepo)
+      - aws configure --profile dev-account-access set aws_access_key_id "$(echo $creds | jq '.Credentials.AccessKeyId')"
+      - aws configure --profile dev-account-access set aws_secret_access_key "$(echo $creds | jq '.Credentials.SecretAccessKey')"
+      - aws configure --profile dev-account-access set region "us-east-2"
+      - aws configure --profile dev-account-access set role_arn $CROSS_ACCOUNT_ROLE
+      - aws configure --profile dev-account-access set credential_source "EcsContainer"
+      - git config --global credential.helper '!aws codecommit --profile dev-account-access credential-helper $@'
+      - git config --global credential.UseHttpPath true
+      - echo "Checking $STACK resources"
+      - |
+        if [ $STACK = "backend" ]; then
+          ansible-playbook site.yml -vv --inventory-file=inventory/ --extra-vars "@./network_backend.yml" --extra-vars "plan=true"
+        else
+          ansible-playbook site.yml -vv --inventory-file=inventory/ --extra-vars "@./network_frontend.yml" --extra-vars "plan=true"
+        fi

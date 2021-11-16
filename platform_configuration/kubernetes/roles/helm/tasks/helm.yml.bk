@@ -1,0 +1,47 @@
+      - name: Helm download bin
+        shell: curl https://storage.googleapis.com/kubernetes-helm/helm-v2.12.3-linux-amd64.tar.gz > ./helm.tar.gz
+        ignore_errors: yes
+        tags:
+                - helm
+
+      - name: Helm unarchive
+        shell: sudo tar -xvf ./helm.tar.gz
+        ignore_errors: yes
+        tags:
+                - helm
+
+      - name: Helm move
+        shell: sudo mv linux-amd64/helm /usr/bin
+        ignore_errors: yes
+        tags:
+                - helm
+
+      - name: Tiller move
+        shell: sudo mv linux-amd64/tiller /usr/bin
+        ignore_errors: yes
+        tags:
+                - helm
+
+      - name: Helm init
+        shell: helm init
+        ignore_errors: yes
+        tags:
+                - helm
+
+      - name: Helm create service 
+        shell: kubectl create serviceaccount --namespace kube-system tiller
+        ignore_errors: yes
+        tags:
+                - helm
+
+      - name: Helm create role binding
+        shell: kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+        ignore_errors: yes
+        tags:
+                - helm
+
+      - name: Helm patch deploy
+        shell: kubectl patch deploy --namespace kube-system tiller-deploy -p'{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+        ignore_errors: yes
+        tags:
+                - helm

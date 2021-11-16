@@ -1,0 +1,12 @@
+---
+  - hosts:
+      local
+      ansible_provisioners
+    tasks:
+      - name: Looping through infra task
+        include_tasks: infra-tasks.yml
+        loop: '{{ network.organizations }}'
+        loop_control:
+          loop_var: org_i
+      - name: Refresh inventory
+        meta: refresh_inventory

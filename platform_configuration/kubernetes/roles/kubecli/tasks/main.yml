@@ -1,0 +1,80 @@
+---
+
+### Instalar kubectl
+
+      - name: Change permission
+        shell: whereis kubectl
+        tags:
+               -kubectl
+
+      - name: Create kube directory
+        shell: mkdir -p /root/.kube
+        tags:
+               -kubectl
+
+      # - name: Touch config
+      #   command: touch /root/.kube/config
+      #   tags:
+      #          -kubectl
+
+      # - name: Override kubeconfig
+      #   shell: cat {{ lookup ('env', 'WORKSPACE')/ansible/config.txt >> /root/.kube/config
+      #   tags:
+      #          -kubectl
+
+      # - name: Override kubeconfig
+      #   shell: cat /root/.kube/config
+      #   tags:
+      #          -kubectl
+
+### Install pip3
+      - name: Install pip3
+        shell: apt install python3-pip -y
+        tags:
+               -aws
+
+### Install awscli
+      - name: Install awscli
+        shell: pip3 install awscli
+        tags:
+               -aws
+
+      - name: Configure aws step 1
+        shell: aws configure set aws_access_key_id AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+        tags:
+               -aws
+
+      - name: Configure aws step 2
+        shell: aws configure set aws_secret_access_key AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY_ID}
+        tags:
+               -aws
+
+      - name: Configure aws step 3
+        shell: aws configure set aws_region ${AWS_DEFAULT_REGION}
+        tags:
+               -aws
+
+      - name: Download authenticator
+        shell: curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.13.7/2019-06-11/bin/linux/amd64/aws-iam-authenticator
+        tags:
+               -awsauth
+
+      - name: Change permissions
+        shell: chmod +x {{ lookup ('env', 'WORKSPACE') }}/ansible/nonprod/kubernetes/aws-iam-authenticator
+        tags:
+               -awsauth
+
+      - name: Move directory path
+        shell: mv {{ lookup ('env', 'WORKSPACE') }}/ansible/nonprod/kubernetes/aws-iam-authenticator /usr/local/bin/
+        tags:
+               -awsauth
+
+      # - name: Kube see config
+      #   shell: cat /root/.kube/config
+      #   tags:
+      #          -test
+
+      - name: Show auth help
+        shell: aws-iam-authenticator help
+        tags:
+               -test

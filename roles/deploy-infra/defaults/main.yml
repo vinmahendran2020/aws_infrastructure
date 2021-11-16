@@ -1,0 +1,8 @@
+---
+# For Ansible Terraform module in deploy-infra
+project_path: "./" # for path where vars, main, etc. Terraform code is located
+state: "present" # goal state (planned, present, absent)
+force_init: "false" # whether to run terraform init
+backend: {} # map of backend configuration values, defaults to none
+variables_file: "./vars.tfvars" # file for variable values
+workspace: "default" # workspace to use

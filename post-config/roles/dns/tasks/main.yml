@@ -1,0 +1,20 @@
+---
+###############################
+####   LAUNCH TERRAFORM    ####
+###############################
+
+- name: Terraform init
+  command: chdir="{{ lookup ('env', 'WORKSPACE') }}/terraform/dns-config/" terraform init
+  tags: init
+
+- name: Terraform validate
+  command: chdir="{{ lookup ('env', 'WORKSPACE') }}/terraform/dns-config/" terraform validate -var dns_name="{{ lookup('env', 'DOMAIN_NAME') }}" -var zone_id="{{ lookup('env', 'ZONE_ID') }}"
+  tags: validate
+
+- name: Terraform plan
+  command: chdir="{{ lookup ('env', 'WORKSPACE') }}/terraform/dns-config/" terraform plan -out=tfplan -input=false -var dns_name="{{ lookup('env', 'DOMAIN_NAME') }}" -var zone_id="{{ lookup('env', 'ZONE_ID') }}"
+  tags: plan
+
+- name: Terraform apply
+  command: chdir="{{ lookup ('env', 'WORKSPACE') }}/terraform/dns-config/" terraform apply -lock=false -input=false tfplan
+  tags: apply

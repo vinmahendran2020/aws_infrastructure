@@ -1,0 +1,720 @@
+---
+# This file holds all the configuration values for the cluster(s) for the blockchain network
+# This is a sample configuration file for MEDIUM Performance environment.
+network:
+  # Allows specification of one or many organizations that will be connecting to a network.
+  # Each meta under organizations correspond to a new Kubernetes environment. For details check confluence (https://confluence.devx.systems/display/PI/ION+Backend+Environment+Diagram)
+  organizations:
+    # NOTE - access key variable has been removed in favour of using environment variables
+    # Please consult Terraform documentation on what it expects (e.g. AWS https://www.terraform.io/docs/providers/aws/index.html)
+    # e.g. for AWS, it expects AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY
+
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: perf1-backend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"      # can be "planned", "present", "absent"
+        force_init: "yes"
+        show_plan: false      # can be "true", then it will show the plan in console
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to ion-infrastructure-prereqs for further instructions on how to create the backend
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-perf-remote-state"
+          key: "ion-terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-perf-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "perf"
+          k8:
+            scale_schedule:
+              # must be lower case true for true, only supports "true" or "false"
+              enabled: "false"
+              scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+              scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "40"      # Max number of EC2 nodes
+            min_size: "9"       # Min number of EC2 nodes
+            desired_size: "9"
+            root_volume_size: "40"
+            cluster_version: "1.16"
+          vault:
+            port: "8200"
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYCNHM4KpUFG+APWoKU9440iVUevwyfafqyriGckb/EnkNkVuZxRat8LOamUY8gVg0V3cLTZwdrHqFmgmRBButntQstK4RpJqVzB3nG17NJgpbPcJZhRYQ1/fZAWA8Mm395sH27zXssa+V+/diFrSMMCu5afyfmmMQ/MpTX321v9JHKkxi6olB1S2FR8V50bru0158o5lSl7z0SfqyVmedQFsqIXDo5DWjNHhFtKhxkQzQo3imyNeRQUG4OCwM4A1dLXABk0rMwXrUnuEhSffQ3A4qxKK/aOBneU6x1ZR/8jb+GkrwFUcchHVCmrXHjhKNFGJhrNp9XvpCgnnz6iPF"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+          domain:
+            prefix: "perf1"
+            name: "perf.devx.systems" # main route 53 domain name hosted zone
+          bastion:
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYCNHM4KpUFG+APWoKU9440iVUevwyfafqyriGckb/EnkNkVuZxRat8LOamUY8gVg0V3cLTZwdrHqFmgmRBButntQstK4RpJqVzB3nG17NJgpbPcJZhRYQ1/fZAWA8Mm395sH27zXssa+V+/diFrSMMCu5afyfmmMQ/MpTX321v9JHKkxi6olB1S2FR8V50bru0158o5lSl7z0SfqyVmedQFsqIXDo5DWjNHhFtKhxkQzQo3imyNeRQUG4OCwM4A1dLXABk0rMwXrUnuEhSffQ3A4qxKK/aOBneU6x1ZR/8jb+GkrwFUcchHVCmrXHjhKNFGJhrNp9XvpCgnnz6iPF"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "jeeva"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRG0RVvmeCmUUGDpTmV/TGGMuTVh42T8q045Y/d2IVrt1i/M5oVB4xcviU1td0DF017U6Pr0pyWwGil6A2/sxLJEpLulXFpu3Zs8fFitzWaop7jfVtgdsVwZNKRcjU72IrKolHbCb2/Sp89b7Fl2XVwURfLgyWnyUn/5BgAH6yfH1h6dd7YLaHUtmk1Eu1Ou315HMVD0rn+uRw+GUqY0YMgcVV0hWg5z1wFe0FSlqF99Ea95hFFO2rE0ODAcxg2OqmLN8KXvhLp9ZoDzRn/BEuMBgUD1YfZ6YMS7b387QlYxXiPWgWURhPhApfVFxDOEiGbiaaXIArlyItWNyTLAmBZ1LowWxro+wL3rw/zJeWPmI2SaFfUe0WakFswgYgBIUi82xMQD4s7FnTPRiPDcYb14+waXp1hG3+RmOTugRy+5H79e7se8XFkT2OY68YxZManEfRRxy3lJjCtgThNEX5U+N5u0OX1cMEsx0UfZ5vpvRQ9+MmjVpS3LiQH+bh7eE= jsankarapandian@devx.systems"
+              - name: "mekia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGw7OWMLrhdlrnK5ukijAsQ5NTqbWvQfldmJfaRdmEVZSKme7Km13i9udnchmvL94/eCHJYvNY4LSKtHNdXTYnyV1Vx6+42sCZfYb9Js2+vxaTLWD5h3S+EoW5w+XJ7oUXY/Dxmc0wkFN8er2KD3lbWknAv5m75hB7/qHxHK7ptG5Pk1Q0i4f2q1jtmmKqCYO0m+Mtm/jlUsyhoy1Ndz8KD8Tm9kp/dL6TIaKQU6PHeBS3FpCDo38OLbwIR6qksrux8KcSx1Y/1qf26je7K/hDFL1D3QNCaG9mOXaLUEXpmVX82rIN7AwXlgIOs0IhEetwxF/v4zj4EwmN6+DG9nmnYRaQu04/Axw1A1ymKcUZPJNAJOfbqdkuk2Vvop1KyuEXm/9uZv0O0vuWxPF1m8fsYbDHQrsXhRYpQchj47m3UgA8Jtfd9ryYqYyIef2yGBbkt4loS11Uo9HUeSRULGu4XSD52Chxt6qPVtj6UgO1taXQHsNS3oDsn9zxhC2Txpc= mekiae@Mekias-MacBook-Pro.local"
+              - name: "exactpro"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/a4ieC269CvLzDh3uyL1NdPVr5BqI/7Li9sJnpzt2lnHY8sa+PtkidZEjP1zxSA7tB2zYqLjMm5OcbdU4y5l2LtYsQqsm3y9T1Ypd4wTYRmcBwjF/wX+JivYfkgu0Q776CGV8Yv8Vt+X6DFsETmiHdZHGzpVgNAdN1En3b0sw5jwvskYgIJwFRmqcZbSn6K1qwHx6WmkgArzFRWR4DeWgRjGWnOnYzz5LI3ofNR/+lRm4H+H2qe+ZT9F8L7yi71RQimNJPMuZuYzzncR5u4w6mOyr3hK8piZJFY83ZYiux5PQyigfCm1vdHH6mUQBbsS4izVcwx2LBiz7pGnKTDkGhxWLMFBPfsFA+w0SUNRsxFN0V5aaUbpjBUDWsVdbd8Nxa+1oT1QasjskIydoRXYEpE0EDsUh20ZWSEuCSTcUzM0EeLE94sliMF7HhIWOocE6Pr3OwVNdM39vJlxKSpJpPrbu74H3Uj8yKsNZHqu9GczrZm9x59Hseg+AvqVm0LM= ec2-user@ip-10-2-0-244.us-east-2.compute.internal"
+              - name: "vmahendran"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCcDaDwbiFT0tZIRwKUObtz2V+L48cSkt5VGvDv6FuUb/L1kctftx2WxLzocnLKTqMEAHWyzHgmxRkHCzU5f77fDItQrG8s1oqiaJn24PPqWLh46wSPJvzxRf3fWPF11UpPiBol1OFDHAhmhC/14bHR5gX7kve9cFU7vO9w7gf8fI5wjftbRNO0hoMjynvQrYCAbuwdgDaTP8taCYfWn2KEXW3N1lJmTmam6+34rUVQACucBR+9TTyzKUdbCZ4tXiPkqE6I5QCHjf6H/B5Pjkj26hb8AJGD+dRgzi9XvmoIwkgNCm6YGYdPdC8tQ4ueIqlUDMecMaTQM170HZTVna7GtaPiOTP3dWNeE9B6NgDUqouCtHO2w7s8ja9F9kYoVnxhXl46hmwCNkdgHcx7EoeMnZR0kY9L6x8iCep3EJPhIRrwbKPcY4+/QTNSMk4SNhw9AMcVx7b+csH4ANOhMd/PA/k80HgfsQOkLmrHKLu9d0i4MIeJ4i2sQO2UJUFEiG0= vmahendran@devx.systems"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.4.0.0/16"
+            public_subnets:
+              - "10.4.0.0/24"
+              - "10.4.1.0/24"
+            private_subnets:
+              - "10.4.2.0/24"
+              - "10.4.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+              # # Dev instance
+              # - "52.57.247.164/32"
+              # - "90.218.123.166/32"
+              # # Dev VPN
+              # - "3.124.141.103/32"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+            subnet_tags:
+              Environment: "perf"
+          eks:
+            instance_type: "t3.large"   # Instance type of EC2 nodes for K8s cluster
+            worker_policies:
+              - "AWSCodeArtifactReadOnlyAccess"
+              - "CloudWatchAgentServerPolicy"
+          bastion:
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Bastions
+          vault:
+            min_size: "1"
+            max_size: "1"
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Vault
+          rds:
+            # Ensure the db_identifier is unique and does not contain special chars as this will be the RDS DBName
+            db_identifier: "perf1backenddb"
+            db_instance_class: "db.r5.large"
+            db_allocated_storage: "50"
+            db_user: "dbadmin"        # Do not use "admin" as the username as it is reserved
+            db_port: "5432"
+            db_backup_retention: "1"
+            #Password is temporarily hardcoded, per Sownak: looking into use of AWS Secrets Manager
+            db_password: "perf1_Password_t3st"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          # MQ Endpoint Service (below components will be configured in infra as code later, currently using hardcoded due to manual creation)
+          mq:
+            mq_endpoint_service: "com.amazonaws.vpce.us-east-2.vpce-svc-0ef1a08d396a3cc2a"            
+          # Codepipeline for BAF
+          pipeline:
+            namespace: "perf1"
+            stage: "testing"
+            repo: ion-blockchain-automation-framework
+            branch: "perf1"
+            git_username: "TestEnvServiceUser"
+            git_ssh_keyname: "APKA4PUKIGILGVC6JRUQ"
+            buildspec: "automation/buildspec.yml"    # The CENM Env must use automation/buildspec.yml, other Env Must use automation/buildspec_addorg.yml
+            cenm_environment: "perf1-backend"        # meta.name of the cluster were CENM will be deployed
+            codebuild_role: "ION_CodeBuild"
+            codepipeline_role: "ION_CodePipeline"
+            artifact_store: "ion-infrastructure-perf-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "perf-testing-cross-account-kms-unseal-key"
+
+    # # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: perf2-backend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"      # can be "planned", "present", "absent"
+        force_init: "yes"
+        show_plan: false      # can be "true", then it will show the plan in console
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to ion-infrastructure-prereqs for further instructions on how to create the backend
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-perf-remote-state"
+          key: "ion-terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-perf-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "perf"
+          k8:
+            scale_schedule:
+              # must be lower case true for true, only supports "true" or "false"
+              enabled: "false"
+              scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+              scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "40"
+            min_size: "9"
+            desired_size: "9"
+            root_volume_size: "40"
+            cluster_version: "1.16"
+          vault:
+            port: "8200"
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYCNHM4KpUFG+APWoKU9440iVUevwyfafqyriGckb/EnkNkVuZxRat8LOamUY8gVg0V3cLTZwdrHqFmgmRBButntQstK4RpJqVzB3nG17NJgpbPcJZhRYQ1/fZAWA8Mm395sH27zXssa+V+/diFrSMMCu5afyfmmMQ/MpTX321v9JHKkxi6olB1S2FR8V50bru0158o5lSl7z0SfqyVmedQFsqIXDo5DWjNHhFtKhxkQzQo3imyNeRQUG4OCwM4A1dLXABk0rMwXrUnuEhSffQ3A4qxKK/aOBneU6x1ZR/8jb+GkrwFUcchHVCmrXHjhKNFGJhrNp9XvpCgnnz6iPF"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+          domain:
+            prefix: "perf2"
+            name: "perf.devx.systems" # main route 53 domain name hosted zone
+          bastion:
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYCNHM4KpUFG+APWoKU9440iVUevwyfafqyriGckb/EnkNkVuZxRat8LOamUY8gVg0V3cLTZwdrHqFmgmRBButntQstK4RpJqVzB3nG17NJgpbPcJZhRYQ1/fZAWA8Mm395sH27zXssa+V+/diFrSMMCu5afyfmmMQ/MpTX321v9JHKkxi6olB1S2FR8V50bru0158o5lSl7z0SfqyVmedQFsqIXDo5DWjNHhFtKhxkQzQo3imyNeRQUG4OCwM4A1dLXABk0rMwXrUnuEhSffQ3A4qxKK/aOBneU6x1ZR/8jb+GkrwFUcchHVCmrXHjhKNFGJhrNp9XvpCgnnz6iPF"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "jeeva"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRG0RVvmeCmUUGDpTmV/TGGMuTVh42T8q045Y/d2IVrt1i/M5oVB4xcviU1td0DF017U6Pr0pyWwGil6A2/sxLJEpLulXFpu3Zs8fFitzWaop7jfVtgdsVwZNKRcjU72IrKolHbCb2/Sp89b7Fl2XVwURfLgyWnyUn/5BgAH6yfH1h6dd7YLaHUtmk1Eu1Ou315HMVD0rn+uRw+GUqY0YMgcVV0hWg5z1wFe0FSlqF99Ea95hFFO2rE0ODAcxg2OqmLN8KXvhLp9ZoDzRn/BEuMBgUD1YfZ6YMS7b387QlYxXiPWgWURhPhApfVFxDOEiGbiaaXIArlyItWNyTLAmBZ1LowWxro+wL3rw/zJeWPmI2SaFfUe0WakFswgYgBIUi82xMQD4s7FnTPRiPDcYb14+waXp1hG3+RmOTugRy+5H79e7se8XFkT2OY68YxZManEfRRxy3lJjCtgThNEX5U+N5u0OX1cMEsx0UfZ5vpvRQ9+MmjVpS3LiQH+bh7eE= jsankarapandian@devx.systems"
+              - name: "mekia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGw7OWMLrhdlrnK5ukijAsQ5NTqbWvQfldmJfaRdmEVZSKme7Km13i9udnchmvL94/eCHJYvNY4LSKtHNdXTYnyV1Vx6+42sCZfYb9Js2+vxaTLWD5h3S+EoW5w+XJ7oUXY/Dxmc0wkFN8er2KD3lbWknAv5m75hB7/qHxHK7ptG5Pk1Q0i4f2q1jtmmKqCYO0m+Mtm/jlUsyhoy1Ndz8KD8Tm9kp/dL6TIaKQU6PHeBS3FpCDo38OLbwIR6qksrux8KcSx1Y/1qf26je7K/hDFL1D3QNCaG9mOXaLUEXpmVX82rIN7AwXlgIOs0IhEetwxF/v4zj4EwmN6+DG9nmnYRaQu04/Axw1A1ymKcUZPJNAJOfbqdkuk2Vvop1KyuEXm/9uZv0O0vuWxPF1m8fsYbDHQrsXhRYpQchj47m3UgA8Jtfd9ryYqYyIef2yGBbkt4loS11Uo9HUeSRULGu4XSD52Chxt6qPVtj6UgO1taXQHsNS3oDsn9zxhC2Txpc= mekiae@Mekias-MacBook-Pro.local"
+              - name: "exactpro"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/a4ieC269CvLzDh3uyL1NdPVr5BqI/7Li9sJnpzt2lnHY8sa+PtkidZEjP1zxSA7tB2zYqLjMm5OcbdU4y5l2LtYsQqsm3y9T1Ypd4wTYRmcBwjF/wX+JivYfkgu0Q776CGV8Yv8Vt+X6DFsETmiHdZHGzpVgNAdN1En3b0sw5jwvskYgIJwFRmqcZbSn6K1qwHx6WmkgArzFRWR4DeWgRjGWnOnYzz5LI3ofNR/+lRm4H+H2qe+ZT9F8L7yi71RQimNJPMuZuYzzncR5u4w6mOyr3hK8piZJFY83ZYiux5PQyigfCm1vdHH6mUQBbsS4izVcwx2LBiz7pGnKTDkGhxWLMFBPfsFA+w0SUNRsxFN0V5aaUbpjBUDWsVdbd8Nxa+1oT1QasjskIydoRXYEpE0EDsUh20ZWSEuCSTcUzM0EeLE94sliMF7HhIWOocE6Pr3OwVNdM39vJlxKSpJpPrbu74H3Uj8yKsNZHqu9GczrZm9x59Hseg+AvqVm0LM= ec2-user@ip-10-2-0-244.us-east-2.compute.internal"
+              - name: "vmahendran"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCcDaDwbiFT0tZIRwKUObtz2V+L48cSkt5VGvDv6FuUb/L1kctftx2WxLzocnLKTqMEAHWyzHgmxRkHCzU5f77fDItQrG8s1oqiaJn24PPqWLh46wSPJvzxRf3fWPF11UpPiBol1OFDHAhmhC/14bHR5gX7kve9cFU7vO9w7gf8fI5wjftbRNO0hoMjynvQrYCAbuwdgDaTP8taCYfWn2KEXW3N1lJmTmam6+34rUVQACucBR+9TTyzKUdbCZ4tXiPkqE6I5QCHjf6H/B5Pjkj26hb8AJGD+dRgzi9XvmoIwkgNCm6YGYdPdC8tQ4ueIqlUDMecMaTQM170HZTVna7GtaPiOTP3dWNeE9B6NgDUqouCtHO2w7s8ja9F9kYoVnxhXl46hmwCNkdgHcx7EoeMnZR0kY9L6x8iCep3EJPhIRrwbKPcY4+/QTNSMk4SNhw9AMcVx7b+csH4ANOhMd/PA/k80HgfsQOkLmrHKLu9d0i4MIeJ4i2sQO2UJUFEiG0= vmahendran@devx.systems"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.2.0.0/16"
+            public_subnets:
+              - "10.2.0.0/24"
+              - "10.2.1.0/24"
+            private_subnets:
+              - "10.2.2.0/24"
+              - "10.2.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+              # # Dev instance
+              # - "52.57.247.164/32"
+              # - "90.218.123.166/32"
+              # # Dev VPN
+              # - "3.124.141.103/32"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+            subnet_tags:
+              Environment: "perf"
+          eks:
+            instance_type: "t3.large"   # Instance type of EC2 nodes for K8s cluster
+            worker_policies:
+              - "AWSCodeArtifactReadOnlyAccess"
+              - "CloudWatchAgentServerPolicy"
+          bastion:
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Bastions
+          vault:
+            min_size: "1"
+            max_size: "1"
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Vault
+          rds:
+            # Ensure the db_identifier is unique and does not contain special chars as this will be the RDS DBName
+            db_identifier: "perf2backenddb"
+            db_instance_class: "db.r5.large"
+            db_allocated_storage: "50"
+            db_user: "dbadmin"        # Do not use "admin" as the username as it is reserved
+            db_port: "5432"
+            db_backup_retention: "1"
+            #Password is temporarily hardcoded, per Sownak: looking into use of AWS Secrets Manager
+            db_password: "perf2_Password_t3st"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          # MQ Endpoint Service (below components will be configured in infra as code later, currently using hardcoded due to manual creation)
+          mq:
+            mq_endpoint_service: "com.amazonaws.vpce.us-east-2.vpce-svc-0ef1a08d396a3cc2a"
+          # Codepipeline for BAF
+          pipeline:
+            namespace: "perf2"
+            stage: "testing"
+            repo: ion-blockchain-automation-framework
+            branch: "perf2"
+            git_username: "TestEnvServiceUser"
+            git_ssh_keyname: "APKA4PUKIGILGVC6JRUQ"
+            buildspec: "automation/buildspec_addorg.yml"    # The CENM Env must use automation/buildspec.yml, other Env Must use automation/buildspec_addorg.yml
+            cenm_environment: "perf1-backend"        # meta.name of the cluster were CENM will be deployed
+            codebuild_role: "ION_CodeBuild"
+            codepipeline_role: "ION_CodePipeline"
+            artifact_store: "ion-infrastructure-perf-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "perf-testing-cross-account-kms-unseal-key"
+
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: perf3-backend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"      # can be "planned", "present", "absent"
+        force_init: "yes"
+        show_plan: false      # can be "true", then it will show the plan in console
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to ion-infrastructure-prereqs for further instructions on how to create the backend
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-perf-remote-state"
+          key: "ion-terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-perf-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "perf"
+          k8:
+            scale_schedule:
+              # must be lower case true for true, only supports "true" or "false"
+              enabled: "false"
+              scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+              scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "40"
+            min_size: "9"
+            desired_size: "9"
+            root_volume_size: "40"
+            cluster_version: "1.16"
+          vault:
+            port: "8200"
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYCNHM4KpUFG+APWoKU9440iVUevwyfafqyriGckb/EnkNkVuZxRat8LOamUY8gVg0V3cLTZwdrHqFmgmRBButntQstK4RpJqVzB3nG17NJgpbPcJZhRYQ1/fZAWA8Mm395sH27zXssa+V+/diFrSMMCu5afyfmmMQ/MpTX321v9JHKkxi6olB1S2FR8V50bru0158o5lSl7z0SfqyVmedQFsqIXDo5DWjNHhFtKhxkQzQo3imyNeRQUG4OCwM4A1dLXABk0rMwXrUnuEhSffQ3A4qxKK/aOBneU6x1ZR/8jb+GkrwFUcchHVCmrXHjhKNFGJhrNp9XvpCgnnz6iPF"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+          domain:
+            prefix: "perf3"
+            name: "perf.devx.systems" # main route 53 domain name hosted zone
+          bastion:
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYCNHM4KpUFG+APWoKU9440iVUevwyfafqyriGckb/EnkNkVuZxRat8LOamUY8gVg0V3cLTZwdrHqFmgmRBButntQstK4RpJqVzB3nG17NJgpbPcJZhRYQ1/fZAWA8Mm395sH27zXssa+V+/diFrSMMCu5afyfmmMQ/MpTX321v9JHKkxi6olB1S2FR8V50bru0158o5lSl7z0SfqyVmedQFsqIXDo5DWjNHhFtKhxkQzQo3imyNeRQUG4OCwM4A1dLXABk0rMwXrUnuEhSffQ3A4qxKK/aOBneU6x1ZR/8jb+GkrwFUcchHVCmrXHjhKNFGJhrNp9XvpCgnnz6iPF"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "jeeva"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRG0RVvmeCmUUGDpTmV/TGGMuTVh42T8q045Y/d2IVrt1i/M5oVB4xcviU1td0DF017U6Pr0pyWwGil6A2/sxLJEpLulXFpu3Zs8fFitzWaop7jfVtgdsVwZNKRcjU72IrKolHbCb2/Sp89b7Fl2XVwURfLgyWnyUn/5BgAH6yfH1h6dd7YLaHUtmk1Eu1Ou315HMVD0rn+uRw+GUqY0YMgcVV0hWg5z1wFe0FSlqF99Ea95hFFO2rE0ODAcxg2OqmLN8KXvhLp9ZoDzRn/BEuMBgUD1YfZ6YMS7b387QlYxXiPWgWURhPhApfVFxDOEiGbiaaXIArlyItWNyTLAmBZ1LowWxro+wL3rw/zJeWPmI2SaFfUe0WakFswgYgBIUi82xMQD4s7FnTPRiPDcYb14+waXp1hG3+RmOTugRy+5H79e7se8XFkT2OY68YxZManEfRRxy3lJjCtgThNEX5U+N5u0OX1cMEsx0UfZ5vpvRQ9+MmjVpS3LiQH+bh7eE= jsankarapandian@devx.systems"
+              - name: "mekia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGw7OWMLrhdlrnK5ukijAsQ5NTqbWvQfldmJfaRdmEVZSKme7Km13i9udnchmvL94/eCHJYvNY4LSKtHNdXTYnyV1Vx6+42sCZfYb9Js2+vxaTLWD5h3S+EoW5w+XJ7oUXY/Dxmc0wkFN8er2KD3lbWknAv5m75hB7/qHxHK7ptG5Pk1Q0i4f2q1jtmmKqCYO0m+Mtm/jlUsyhoy1Ndz8KD8Tm9kp/dL6TIaKQU6PHeBS3FpCDo38OLbwIR6qksrux8KcSx1Y/1qf26je7K/hDFL1D3QNCaG9mOXaLUEXpmVX82rIN7AwXlgIOs0IhEetwxF/v4zj4EwmN6+DG9nmnYRaQu04/Axw1A1ymKcUZPJNAJOfbqdkuk2Vvop1KyuEXm/9uZv0O0vuWxPF1m8fsYbDHQrsXhRYpQchj47m3UgA8Jtfd9ryYqYyIef2yGBbkt4loS11Uo9HUeSRULGu4XSD52Chxt6qPVtj6UgO1taXQHsNS3oDsn9zxhC2Txpc= mekiae@Mekias-MacBook-Pro.local"
+              - name: "exactpro"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/a4ieC269CvLzDh3uyL1NdPVr5BqI/7Li9sJnpzt2lnHY8sa+PtkidZEjP1zxSA7tB2zYqLjMm5OcbdU4y5l2LtYsQqsm3y9T1Ypd4wTYRmcBwjF/wX+JivYfkgu0Q776CGV8Yv8Vt+X6DFsETmiHdZHGzpVgNAdN1En3b0sw5jwvskYgIJwFRmqcZbSn6K1qwHx6WmkgArzFRWR4DeWgRjGWnOnYzz5LI3ofNR/+lRm4H+H2qe+ZT9F8L7yi71RQimNJPMuZuYzzncR5u4w6mOyr3hK8piZJFY83ZYiux5PQyigfCm1vdHH6mUQBbsS4izVcwx2LBiz7pGnKTDkGhxWLMFBPfsFA+w0SUNRsxFN0V5aaUbpjBUDWsVdbd8Nxa+1oT1QasjskIydoRXYEpE0EDsUh20ZWSEuCSTcUzM0EeLE94sliMF7HhIWOocE6Pr3OwVNdM39vJlxKSpJpPrbu74H3Uj8yKsNZHqu9GczrZm9x59Hseg+AvqVm0LM= ec2-user@ip-10-2-0-244.us-east-2.compute.internal"
+              - name: "vmahendran"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCcDaDwbiFT0tZIRwKUObtz2V+L48cSkt5VGvDv6FuUb/L1kctftx2WxLzocnLKTqMEAHWyzHgmxRkHCzU5f77fDItQrG8s1oqiaJn24PPqWLh46wSPJvzxRf3fWPF11UpPiBol1OFDHAhmhC/14bHR5gX7kve9cFU7vO9w7gf8fI5wjftbRNO0hoMjynvQrYCAbuwdgDaTP8taCYfWn2KEXW3N1lJmTmam6+34rUVQACucBR+9TTyzKUdbCZ4tXiPkqE6I5QCHjf6H/B5Pjkj26hb8AJGD+dRgzi9XvmoIwkgNCm6YGYdPdC8tQ4ueIqlUDMecMaTQM170HZTVna7GtaPiOTP3dWNeE9B6NgDUqouCtHO2w7s8ja9F9kYoVnxhXl46hmwCNkdgHcx7EoeMnZR0kY9L6x8iCep3EJPhIRrwbKPcY4+/QTNSMk4SNhw9AMcVx7b+csH4ANOhMd/PA/k80HgfsQOkLmrHKLu9d0i4MIeJ4i2sQO2UJUFEiG0= vmahendran@devx.systems"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.3.0.0/16"
+            public_subnets:
+              - "10.3.0.0/24"
+              - "10.3.1.0/24"
+            private_subnets:
+              - "10.3.2.0/24"
+              - "10.3.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+              # # Dev instance
+              # - "52.57.247.164/32"
+              # - "90.218.123.166/32"
+              # # Dev VPN
+              # - "3.124.141.103/32"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+            subnet_tags:
+              Environment: "perf"
+          eks:
+            instance_type: "t3.large"   # Instance type of EC2 nodes for K8s cluster
+            worker_policies:
+              - "AWSCodeArtifactReadOnlyAccess"
+              - "CloudWatchAgentServerPolicy"
+          bastion:
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Bastions
+          vault:
+            min_size: "1"
+            max_size: "1"
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Vault
+          rds:
+            # Ensure the db_identifier is unique and does not contain special chars as this will be the RDS DBName
+            db_identifier: "perf3backenddb"
+            db_instance_class: "db.r5.large"
+            db_allocated_storage: "50"
+            db_user: "dbadmin"        # Do not use "admin" as the username as it is reserved
+            db_port: "5432"
+            db_backup_retention: "1"
+            #Password is temporarily hardcoded, per Sownak: looking into use of AWS Secrets Manager
+            db_password: "perf3_Password_t3st"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          # MQ Endpoint Service (below components will be configured in infra as code later, currently using hardcoded due to manual creation)
+          mq:
+            mq_endpoint_service: "com.amazonaws.vpce.us-east-2.vpce-svc-0ef1a08d396a3cc2a"
+          # Codepipeline for BAF
+          pipeline:
+            namespace: "perf3"
+            stage: "testing"
+            repo: ion-blockchain-automation-framework
+            branch: "perf3"
+            git_username: "TestEnvServiceUser"
+            git_ssh_keyname: "APKA4PUKIGILGVC6JRUQ"
+            buildspec: "automation/buildspec_addorg.yml"    # The CENM Env must use automation/buildspec.yml, other Env Must use automation/buildspec_addorg.yml
+            cenm_environment: "perf1-backend"        # meta.name of the cluster were CENM will be deployed
+            codebuild_role: "ION_CodeBuild"
+            codepipeline_role: "ION_CodePipeline"
+            artifact_store: "ion-infrastructure-perf-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "perf-testing-cross-account-kms-unseal-key"
+
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: perf4-backend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"      # can be "planned", "present", "absent"
+        force_init: "yes"
+        show_plan: false
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to ion-infrastructure-prereqs for further instructions on how to create the backend
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-perf-remote-state"
+          key: "ion-terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-perf-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "perf"
+          k8:
+            scale_schedule:
+              # must be lower case true for true, only supports "true" or "false"
+              enabled: "false"
+              scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+              scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "40"
+            min_size: "0"
+            desired_size: "0"
+            root_volume_size: "40"
+            cluster_version: "1.16"
+          vault:
+            port: "8200"
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYCNHM4KpUFG+APWoKU9440iVUevwyfafqyriGckb/EnkNkVuZxRat8LOamUY8gVg0V3cLTZwdrHqFmgmRBButntQstK4RpJqVzB3nG17NJgpbPcJZhRYQ1/fZAWA8Mm395sH27zXssa+V+/diFrSMMCu5afyfmmMQ/MpTX321v9JHKkxi6olB1S2FR8V50bru0158o5lSl7z0SfqyVmedQFsqIXDo5DWjNHhFtKhxkQzQo3imyNeRQUG4OCwM4A1dLXABk0rMwXrUnuEhSffQ3A4qxKK/aOBneU6x1ZR/8jb+GkrwFUcchHVCmrXHjhKNFGJhrNp9XvpCgnnz6iPF"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+          domain:
+            prefix: "perf4"
+            name: "perf.devx.systems" # main route 53 domain name hosted zone
+          bastion:
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYCNHM4KpUFG+APWoKU9440iVUevwyfafqyriGckb/EnkNkVuZxRat8LOamUY8gVg0V3cLTZwdrHqFmgmRBButntQstK4RpJqVzB3nG17NJgpbPcJZhRYQ1/fZAWA8Mm395sH27zXssa+V+/diFrSMMCu5afyfmmMQ/MpTX321v9JHKkxi6olB1S2FR8V50bru0158o5lSl7z0SfqyVmedQFsqIXDo5DWjNHhFtKhxkQzQo3imyNeRQUG4OCwM4A1dLXABk0rMwXrUnuEhSffQ3A4qxKK/aOBneU6x1ZR/8jb+GkrwFUcchHVCmrXHjhKNFGJhrNp9XvpCgnnz6iPF"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "jeeva"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRG0RVvmeCmUUGDpTmV/TGGMuTVh42T8q045Y/d2IVrt1i/M5oVB4xcviU1td0DF017U6Pr0pyWwGil6A2/sxLJEpLulXFpu3Zs8fFitzWaop7jfVtgdsVwZNKRcjU72IrKolHbCb2/Sp89b7Fl2XVwURfLgyWnyUn/5BgAH6yfH1h6dd7YLaHUtmk1Eu1Ou315HMVD0rn+uRw+GUqY0YMgcVV0hWg5z1wFe0FSlqF99Ea95hFFO2rE0ODAcxg2OqmLN8KXvhLp9ZoDzRn/BEuMBgUD1YfZ6YMS7b387QlYxXiPWgWURhPhApfVFxDOEiGbiaaXIArlyItWNyTLAmBZ1LowWxro+wL3rw/zJeWPmI2SaFfUe0WakFswgYgBIUi82xMQD4s7FnTPRiPDcYb14+waXp1hG3+RmOTugRy+5H79e7se8XFkT2OY68YxZManEfRRxy3lJjCtgThNEX5U+N5u0OX1cMEsx0UfZ5vpvRQ9+MmjVpS3LiQH+bh7eE= jsankarapandian@devx.systems"
+              - name: "mekia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGw7OWMLrhdlrnK5ukijAsQ5NTqbWvQfldmJfaRdmEVZSKme7Km13i9udnchmvL94/eCHJYvNY4LSKtHNdXTYnyV1Vx6+42sCZfYb9Js2+vxaTLWD5h3S+EoW5w+XJ7oUXY/Dxmc0wkFN8er2KD3lbWknAv5m75hB7/qHxHK7ptG5Pk1Q0i4f2q1jtmmKqCYO0m+Mtm/jlUsyhoy1Ndz8KD8Tm9kp/dL6TIaKQU6PHeBS3FpCDo38OLbwIR6qksrux8KcSx1Y/1qf26je7K/hDFL1D3QNCaG9mOXaLUEXpmVX82rIN7AwXlgIOs0IhEetwxF/v4zj4EwmN6+DG9nmnYRaQu04/Axw1A1ymKcUZPJNAJOfbqdkuk2Vvop1KyuEXm/9uZv0O0vuWxPF1m8fsYbDHQrsXhRYpQchj47m3UgA8Jtfd9ryYqYyIef2yGBbkt4loS11Uo9HUeSRULGu4XSD52Chxt6qPVtj6UgO1taXQHsNS3oDsn9zxhC2Txpc= mekiae@Mekias-MacBook-Pro.local"
+              - name: "exactpro"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/a4ieC269CvLzDh3uyL1NdPVr5BqI/7Li9sJnpzt2lnHY8sa+PtkidZEjP1zxSA7tB2zYqLjMm5OcbdU4y5l2LtYsQqsm3y9T1Ypd4wTYRmcBwjF/wX+JivYfkgu0Q776CGV8Yv8Vt+X6DFsETmiHdZHGzpVgNAdN1En3b0sw5jwvskYgIJwFRmqcZbSn6K1qwHx6WmkgArzFRWR4DeWgRjGWnOnYzz5LI3ofNR/+lRm4H+H2qe+ZT9F8L7yi71RQimNJPMuZuYzzncR5u4w6mOyr3hK8piZJFY83ZYiux5PQyigfCm1vdHH6mUQBbsS4izVcwx2LBiz7pGnKTDkGhxWLMFBPfsFA+w0SUNRsxFN0V5aaUbpjBUDWsVdbd8Nxa+1oT1QasjskIydoRXYEpE0EDsUh20ZWSEuCSTcUzM0EeLE94sliMF7HhIWOocE6Pr3OwVNdM39vJlxKSpJpPrbu74H3Uj8yKsNZHqu9GczrZm9x59Hseg+AvqVm0LM= ec2-user@ip-10-2-0-244.us-east-2.compute.internal"
+              - name: "vmahendran"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCcDaDwbiFT0tZIRwKUObtz2V+L48cSkt5VGvDv6FuUb/L1kctftx2WxLzocnLKTqMEAHWyzHgmxRkHCzU5f77fDItQrG8s1oqiaJn24PPqWLh46wSPJvzxRf3fWPF11UpPiBol1OFDHAhmhC/14bHR5gX7kve9cFU7vO9w7gf8fI5wjftbRNO0hoMjynvQrYCAbuwdgDaTP8taCYfWn2KEXW3N1lJmTmam6+34rUVQACucBR+9TTyzKUdbCZ4tXiPkqE6I5QCHjf6H/B5Pjkj26hb8AJGD+dRgzi9XvmoIwkgNCm6YGYdPdC8tQ4ueIqlUDMecMaTQM170HZTVna7GtaPiOTP3dWNeE9B6NgDUqouCtHO2w7s8ja9F9kYoVnxhXl46hmwCNkdgHcx7EoeMnZR0kY9L6x8iCep3EJPhIRrwbKPcY4+/QTNSMk4SNhw9AMcVx7b+csH4ANOhMd/PA/k80HgfsQOkLmrHKLu9d0i4MIeJ4i2sQO2UJUFEiG0= vmahendran@devx.systems"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.1.0.0/16"
+            public_subnets:
+              - "10.1.0.0/24"
+              - "10.1.1.0/24"
+            private_subnets:
+              - "10.1.2.0/24"
+              - "10.1.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+              # # Dev instance
+              # - "52.57.247.164/32"
+              # - "90.218.123.166/32"
+              # # Dev VPN
+              # - "3.124.141.103/32"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+            subnet_tags:
+              Environment: "perf"
+          eks:
+            instance_type: "t3.large"   # Instance type of EC2 nodes for K8s cluster
+            worker_policies:
+              - "AWSCodeArtifactReadOnlyAccess"
+              - "CloudWatchAgentServerPolicy"
+          bastion:
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Bastions
+          vault:
+            min_size: "1"
+            max_size: "1"
+            instance_type: "t2.micro"   # Instance type of EC2 nodes for Vault
+          rds:
+            # Ensure the db_identifier is unique and does not contain special chars as this will be the RDS DBName
+            db_identifier: "perf4backenddb"
+            db_instance_class: "db.r5.large"
+            db_allocated_storage: "50"
+            db_user: "dbadmin"        # Do not use "admin" as the username as it is reserved
+            db_port: "5432"
+            db_backup_retention: "1"
+            #Password is temporarily hardcoded, per Sownak: looking into use of AWS Secrets Manager
+            db_password: "perf4_Password_t3st"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          # MQ Endpoint Service (below components will be configured in infra as code later, currently using hardcoded due to manual creation)
+          mq:
+            mq_endpoint_service: "com.amazonaws.vpce.us-east-2.vpce-svc-0ef1a08d396a3cc2a"
+          # Codepipeline for BAF
+          pipeline:
+            namespace: "perf4"
+            stage: "testing"
+            repo: ion-blockchain-automation-framework
+            branch: "perf4"
+            git_username: "TestEnvServiceUser"
+            git_ssh_keyname: "APKA4PUKIGILGVC6JRUQ"
+            buildspec: "automation/buildspec_addorg.yml"    # The CENM Env must use automation/buildspec.yml, other Env Must use automation/buildspec_addorg.yml
+            cenm_environment: "perf1-backend"        # meta.name of the cluster were CENM will be deployed
+            codebuild_role: "ION_CodeBuild"
+            codepipeline_role: "ION_CodePipeline"
+            artifact_store: "ion-infrastructure-perf-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "perf-testing-cross-account-kms-unseal-key"
+
+    # Specification for the organization. Each organization maps to a VPC and a separate k8s cluster
+    - meta:
+        name: perf5-backend
+
+      # For the Terraform Ansible module, define values for the module variables
+      workflow:
+        state: "present"
+        force_init: "yes"
+        show_plan: false
+
+      # Backend configuration allows Terraform to initialise itself with a remote backend for storing state
+      # This is useful as it enables CICD, as well as multiple developers working on the same set of infrastructure
+      # These values represent remote backends that have already been created
+      # Please refer to fulcrum-infrastructure-backend for further instructions on how to create the backend
+      backend:
+        provider: "aws"
+        # Replace the below lines with the values for the respective cloud provider - refer to Terraform documentation for exact values
+        config:
+          # AWS
+          bucket: "ion-infrastructure-perf-remote-state"
+          key: "ion-terraform"
+          region: "us-east-2"
+          dynamodb_table: "ion-infrastructure-perf-remote-state-lock"
+
+      infrastructure:
+        cloud_provider: "aws" # aws, azure, gcp, etc.
+        general:
+          region: "us-east-2"
+          tags: # to be applied on all resources created
+            created_by: "Terraform"
+            orchestrated_by: "Ansible"
+            Environment: "perf"
+          k8:
+            scale_schedule:
+              # must be lower case true for true, only supports "true" or "false"
+              enabled: "false"
+              scale_down_cron: "0 19 * * 1-5" # 1900 GMT
+              scale_up_cron: "0 3 * * 1-5" # 0330 IST
+            max_size: "40"
+            min_size: "0"
+            desired_size: "0"
+            root_volume_size: "40"
+            cluster_version: "1.16"
+          vault:
+            port: "8200"
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYCNHM4KpUFG+APWoKU9440iVUevwyfafqyriGckb/EnkNkVuZxRat8LOamUY8gVg0V3cLTZwdrHqFmgmRBButntQstK4RpJqVzB3nG17NJgpbPcJZhRYQ1/fZAWA8Mm395sH27zXssa+V+/diFrSMMCu5afyfmmMQ/MpTX321v9JHKkxi6olB1S2FR8V50bru0158o5lSl7z0SfqyVmedQFsqIXDo5DWjNHhFtKhxkQzQo3imyNeRQUG4OCwM4A1dLXABk0rMwXrUnuEhSffQ3A4qxKK/aOBneU6x1ZR/8jb+GkrwFUcchHVCmrXHjhKNFGJhrNp9XvpCgnnz6iPF"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+          domain:
+            prefix: "perf5"
+            name: "perf.devx.systems" # main route 53 domain name hosted zone
+          bastion:
+            # public_key of ec2-user key from AWS
+            public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCYCNHM4KpUFG+APWoKU9440iVUevwyfafqyriGckb/EnkNkVuZxRat8LOamUY8gVg0V3cLTZwdrHqFmgmRBButntQstK4RpJqVzB3nG17NJgpbPcJZhRYQ1/fZAWA8Mm395sH27zXssa+V+/diFrSMMCu5afyfmmMQ/MpTX321v9JHKkxi6olB1S2FR8V50bru0158o5lSl7z0SfqyVmedQFsqIXDo5DWjNHhFtKhxkQzQo3imyNeRQUG4OCwM4A1dLXABk0rMwXrUnuEhSffQ3A4qxKK/aOBneU6x1ZR/8jb+GkrwFUcchHVCmrXHjhKNFGJhrNp9XvpCgnnz6iPF"
+            users:
+              - name: "qa"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrs3z3DXSaL5n6XR6dRam20KEzR5t5zgUnNU8iLwkkx9tkjw3ws+QLC+wevkgWs7ET09sg8WBAXNlnl4jhQaM3IU4OyfaYnmq06CbdvW7x8jT86ZyA1uIzpsDkNXibYcDFtIWPwihOn1G7n9uWkz3Zk2KPppArJX+xplwIo8ysprDCR1HTRBIi1siMgo8SC/cuAkE6jhyYBNh7OxDzKYKfb4g6gYNIFEVidu5iFbt3OnCvQteDhyYHZufw+/OwgWCRZ6F0H3aM91HT+VdUlyEY1zf71StxzpTLIa2spOxuMfpFlcuqFn4VLGTH6d1guQEWuszsV9MAvVbkan5+Ocjb"
+              - name: "rohith"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCx2RxuHvOZ1MFMyIPnBdR0eysVqP8SIpQwVWLXPEZqD6+jnnAw3qHa4TqihcweklJrq4PMXrJw+ZSpZNUmjK8uIA3BunC7BpxEkMDQNPt3bQMkPNS8XCqbDiTy4y/LJj/G4JtoeS8FCpPUr+ScZjTqxuxNwGg0L3uhdcWpaKyZPXhjkWAJX/HVwnHOEdtGa1gsA3U3g+uYEFbu9Eh2chcxDpB9rvmnTShxESb/W/quUE9bQU58X5BSYDav8fplRv/l6u8RFLFIFOVmKP6JKK7VPHn9qQTSJJ0MQlQ7470oF2/ZQ5iekKPdUpBmRz9St8yNkh0sp2L5wztE4XPofg4mXMpJWRotRKcSQaCxjyv4L1PEyQwl2xvjP+CAoCV1wIH01MqEvmAgtW8lYB7bELYYwxyWRFX/fCEDu1rYyRanE0Locg5m7SGiLKK/clFO1ObtcQdRN5f9YTH/nZjQAig+usRQ6ZXRzlTFG05SIKxUAezdBmNtnEyH0FEjWmkgORk= rnallandigal@devx.systems"
+              - name: "jeeva"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRG0RVvmeCmUUGDpTmV/TGGMuTVh42T8q045Y/d2IVrt1i/M5oVB4xcviU1td0DF017U6Pr0pyWwGil6A2/sxLJEpLulXFpu3Zs8fFitzWaop7jfVtgdsVwZNKRcjU72IrKolHbCb2/Sp89b7Fl2XVwURfLgyWnyUn/5BgAH6yfH1h6dd7YLaHUtmk1Eu1Ou315HMVD0rn+uRw+GUqY0YMgcVV0hWg5z1wFe0FSlqF99Ea95hFFO2rE0ODAcxg2OqmLN8KXvhLp9ZoDzRn/BEuMBgUD1YfZ6YMS7b387QlYxXiPWgWURhPhApfVFxDOEiGbiaaXIArlyItWNyTLAmBZ1LowWxro+wL3rw/zJeWPmI2SaFfUe0WakFswgYgBIUi82xMQD4s7FnTPRiPDcYb14+waXp1hG3+RmOTugRy+5H79e7se8XFkT2OY68YxZManEfRRxy3lJjCtgThNEX5U+N5u0OX1cMEsx0UfZ5vpvRQ9+MmjVpS3LiQH+bh7eE= jsankarapandian@devx.systems"
+              - name: "mekia"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDGw7OWMLrhdlrnK5ukijAsQ5NTqbWvQfldmJfaRdmEVZSKme7Km13i9udnchmvL94/eCHJYvNY4LSKtHNdXTYnyV1Vx6+42sCZfYb9Js2+vxaTLWD5h3S+EoW5w+XJ7oUXY/Dxmc0wkFN8er2KD3lbWknAv5m75hB7/qHxHK7ptG5Pk1Q0i4f2q1jtmmKqCYO0m+Mtm/jlUsyhoy1Ndz8KD8Tm9kp/dL6TIaKQU6PHeBS3FpCDo38OLbwIR6qksrux8KcSx1Y/1qf26je7K/hDFL1D3QNCaG9mOXaLUEXpmVX82rIN7AwXlgIOs0IhEetwxF/v4zj4EwmN6+DG9nmnYRaQu04/Axw1A1ymKcUZPJNAJOfbqdkuk2Vvop1KyuEXm/9uZv0O0vuWxPF1m8fsYbDHQrsXhRYpQchj47m3UgA8Jtfd9ryYqYyIef2yGBbkt4loS11Uo9HUeSRULGu4XSD52Chxt6qPVtj6UgO1taXQHsNS3oDsn9zxhC2Txpc= mekiae@Mekias-MacBook-Pro.local"
+              - name: "exactpro"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/a4ieC269CvLzDh3uyL1NdPVr5BqI/7Li9sJnpzt2lnHY8sa+PtkidZEjP1zxSA7tB2zYqLjMm5OcbdU4y5l2LtYsQqsm3y9T1Ypd4wTYRmcBwjF/wX+JivYfkgu0Q776CGV8Yv8Vt+X6DFsETmiHdZHGzpVgNAdN1En3b0sw5jwvskYgIJwFRmqcZbSn6K1qwHx6WmkgArzFRWR4DeWgRjGWnOnYzz5LI3ofNR/+lRm4H+H2qe+ZT9F8L7yi71RQimNJPMuZuYzzncR5u4w6mOyr3hK8piZJFY83ZYiux5PQyigfCm1vdHH6mUQBbsS4izVcwx2LBiz7pGnKTDkGhxWLMFBPfsFA+w0SUNRsxFN0V5aaUbpjBUDWsVdbd8Nxa+1oT1QasjskIydoRXYEpE0EDsUh20ZWSEuCSTcUzM0EeLE94sliMF7HhIWOocE6Pr3OwVNdM39vJlxKSpJpPrbu74H3Uj8yKsNZHqu9GczrZm9x59Hseg+AvqVm0LM= ec2-user@ip-10-2-0-244.us-east-2.compute.internal"
+              - name: "vmahendran"
+                public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCcDaDwbiFT0tZIRwKUObtz2V+L48cSkt5VGvDv6FuUb/L1kctftx2WxLzocnLKTqMEAHWyzHgmxRkHCzU5f77fDItQrG8s1oqiaJn24PPqWLh46wSPJvzxRf3fWPF11UpPiBol1OFDHAhmhC/14bHR5gX7kve9cFU7vO9w7gf8fI5wjftbRNO0hoMjynvQrYCAbuwdgDaTP8taCYfWn2KEXW3N1lJmTmam6+34rUVQACucBR+9TTyzKUdbCZ4tXiPkqE6I5QCHjf6H/B5Pjkj26hb8AJGD+dRgzi9XvmoIwkgNCm6YGYdPdC8tQ4ueIqlUDMecMaTQM170HZTVna7GtaPiOTP3dWNeE9B6NgDUqouCtHO2w7s8ja9F9kYoVnxhXl46hmwCNkdgHcx7EoeMnZR0kY9L6x8iCep3EJPhIRrwbKPcY4+/QTNSMk4SNhw9AMcVx7b+csH4ANOhMd/PA/k80HgfsQOkLmrHKLu9d0i4MIeJ4i2sQO2UJUFEiG0= vmahendran@devx.systems"
+        aws:
+          general:
+            availability_zones:
+              - "us-east-2a"
+              - "us-east-2b"
+          networking:
+            log_retention_in_days: "14"
+            cidr: "10.5.0.0/16"
+            public_subnets:
+              - "10.5.0.0/24"
+              - "10.5.1.0/24"
+            private_subnets:
+              - "10.5.2.0/24"
+              - "10.5.3.0/24"
+            allowed_ingress_cidr_range:
+              - "0.0.0.0/0"
+              # # Dev instance
+              # - "52.57.247.164/32"
+              # - "90.218.123.166/32"
+              # # Dev VPN
+              # - "3.124.141.103/32"
+            allowed_egress_cidr_range:
+              - "0.0.0.0/0"
+            public_subnet_tags:
+              type: "public"
+            private_subnet_tags:
+              type: "private"
+            subnet_tags:
+              Environment: "perf"
+          eks:
+            instance_type: "t3.large"
+            worker_policies:
+              - "AWSCodeArtifactReadOnlyAccess"
+              - "CloudWatchAgentServerPolicy"
+          bastion:
+            instance_type: "t2.micro"
+          vault:
+            min_size: "1"
+            max_size: "1"
+            instance_type: "t2.micro"
+          rds:
+            # Ensure the db_identifier is unique and does not contain special chars as this will be the RDS DBName
+            db_identifier: "perf5backenddb"
+            db_instance_class: "db.r5.large"
+            db_allocated_storage: "50"
+            db_user: "dbadmin"        # Do not use "admin" as the username as it is reserved
+            db_port: "5432"
+            db_backup_retention: "1"
+            #Password is temporarily hardcoded, per Sownak: looking into use of AWS Secrets Manager
+            db_password: "perf5_Password_t3st"
+          # DO NOT ADD ECR Repos in QA Account
+          # ecr:
+          # MQ Endpoint Service (below components will be configured in infra as code later, currently using hardcoded due to manual creation)
+          mq:
+            mq_endpoint_service: "com.amazonaws.vpce.us-east-2.vpce-svc-0ef1a08d396a3cc2a"
+          # Codepipeline for BAF
+          pipeline:
+            namespace: "perf5"
+            stage: "testing"
+            repo: ion-blockchain-automation-framework
+            branch: "perf5"
+            git_username: "TestEnvServiceUser"
+            git_ssh_keyname: "APKA4PUKIGILGVC6JRUQ"
+            buildspec: "automation/buildspec_addorg.yml"    # The CENM Env must use automation/buildspec.yml, other Env Must use automation/buildspec_addorg.yml
+            cenm_environment: "perf1-backend"        # meta.name of the cluster were CENM will be deployed
+            codebuild_role: "ION_CodeBuild"
+            codepipeline_role: "ION_CodePipeline"
+            artifact_store: "ion-infrastructure-perf-artifacts-bucket"
+            dev_account_id: "858209661462"
+            kms_key_name: "perf-testing-cross-account-kms-unseal-key"

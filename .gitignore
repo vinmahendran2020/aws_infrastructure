@@ -1,0 +1,53 @@
+**/bin/
+.DS_Store
+
+# Common VCS dirs
+.git/
+.bzr/
+.bzrignore
+.hg/
+.hgignore
+.svn/
+
+# Terraform
+**/.terraform/
+*.tfplan
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/generated-vars.tfvars
+**/generated.tfvars
+**.terraform.tfstate.lock.info
+**/cloud_init_bastion.yml
+**/cloud_init_vault.yml
+
+
+*outputs.tfvars
+*.terragrunt
+*.terragrunt-cache
+*.retry
+
+# Output Files
+output_files/
+infrastructure/aws/environments/cluster/kubeconfig*
+infrastructure/aws/environments/cluster/config-map-aws-auth_*
+
+# Common backup files
+*.swp
+*.bak
+*.tmp
+**/tmp/
+*~
+
+.project
+**.idea
+*.iml
+*vendor
+*.log
+
+# Python cache files from molecule tests
+*.pyc
+
+# Folder used to store temporary test data by Terratest
+*.test-data
+rootKey/
+unsealKey/

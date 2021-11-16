@@ -1,0 +1,51 @@
+---
+# Terraform comes from https://docs.ansible.com/ansible/latest/modules/terraform_module.html
+
+- name: "Plan Terraform"
+  terraform:
+    project_path: "{{ project_path }}"
+    state: "planned"   # Options: 'present', 'absent', 'planned'
+    force_init: "{{ force_init }}"
+    backend_config: "{{ backend_config }}"
+    variables_file: "{{ variables_file }}"
+    workspace: "{{ workspace }}"
+    plan_file: "{{ workspace }}.tfplan"
+  # only run this when 'plan' is given in the variables passed to this role
+  check_mode: yes
+  when: 
+    - plan is defined
+    - plan == "true"
+
+- name: "Show Terraform Plan"
+  shell: |-
+    cd {{ project_path }}
+    terraform show {{ workspace }}.tfplan
+  changed_when: false
+  when: 
+    - plan is defined
+    - plan == "true"
+    - show_plan is defined and show_plan
+
+- name: "Execute Terraform"
+  terraform:
+    project_path: "{{ project_path }}"
+    state: "{{ state }}"   # Options: 'present', 'absent'
+    force_init: "{{ force_init }}"
+    backend_config: "{{ backend_config }}"
+    variables_file: "{{ variables_file }}"
+    workspace: "{{ workspace }}"
+  register: terraform_output
+  # only run this when 'plan' is not given in the variables passed to this role
+  when:
+    - not ansible_check_mode
+    - plan is undefined or plan != "true"
+
+- name: "Print Terraform outputs"
+  debug:
+    msg: "{{ terraform_output }}"
+
+- name: "Log Terraform output to File"
+  local_action: 
+    module: copy 
+    content: "{{ terraform_output }}"
+    dest: ./{{ workspace }}_terraform_output.json

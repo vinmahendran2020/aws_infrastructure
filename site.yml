@@ -1,0 +1,9 @@
+---
+#######################################
+# Master Playbook for the Enivronment #
+#######################################
+  - hosts: local
+    gather_facts: no
+
+  - import_playbook: infrastructure.yml            # First create the underlying infrastructure
+  

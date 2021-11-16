@@ -1,0 +1,11 @@
+# Default values for cloudwatch-config.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+fullnameOverride: ""
+
+clusterName: uat1-frontend-CLUSTER
+aws:
+  region: "us-east-2"
+

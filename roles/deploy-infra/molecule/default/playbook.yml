@@ -1,0 +1,27 @@
+---
+- name: Converge
+  hosts: all
+  roles:
+    - role: deploy-infra
+  vars:
+    infra_aws_region: "x"
+    infra_aws_access_key: "x"
+    infra_aws_secret_key: "x"
+    infra_workspace: "x"
+    infra_environment_name: "x"
+    infra_project_name: "x"
+    infra_env: "x"
+    infra_availability_zones: "x"
+    infra_cidr: "x"
+    infra_public_subnets: "x"
+    infra_private_subnets: "x"
+    infra_allowed_ingress_cidr_range: "x"
+    infra_allowed_egress_cidr_range: "x"
+    infra_log_retention_in_days: "x"
+    infra_tags: "x"
+    infra_bastion_public_key: "x"
+    infra_bastion_instance_type: "x"
+    infra_bastion_users: "x"
+    infra_vault_public_key: "x"
+    infra_vault_instance_type: "x"
+    
